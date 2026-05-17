@@ -76,8 +76,11 @@ export default function SettingsScreen() {
               >
                 {theme.label}
               </Text>
+              <Text style={[styles.rowRight, { color: colors.textMuted, fontFamily: FONT_FAMILY.regular }]}>
+                {theme.description}
+              </Text>
               {isActive && (
-                <Text style={{ color: colors.accent, fontSize: 18 }}>✓</Text>
+                <Text style={{ color: colors.accent, fontSize: 18, marginLeft: 8 }}>✓</Text>
               )}
             </TouchableOpacity>
           );

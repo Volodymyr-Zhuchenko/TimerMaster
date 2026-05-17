@@ -1,21 +1,9 @@
 // ============================================================
 // useCountdown — логіка таймера зворотного відліку.
 //
-// Ключові архітектурні рішення:
-//
-// 1. endTimeRef = Date.now() + remainingMs:
-//    При кожному тіку обчислюємо left = endTimeRef - Date.now().
-//    Так само як у useStopwatch, це виключає drift від нерівномірних
-//    тіків setInterval.
-//
-// 2. Завантаження звуку при зміні soundTheme:
-//    useEffect з [soundTheme] перезавантажує аудіо-файл при виборі
-//    нової теми в Налаштуваннях. soundLoadedRef запобігає подвійному
-//    завантаженню при незмінній темі.
-//
-// 3. Cleanup:
-//    При розмонтуванні (перехід на іншу вкладку або закриття) —
-//    clearInterval + unloadSound(), щоб звільнити native audio buffer.
+// При завершенні: playSound() → аудіо (timer-bell.mp3) + haptic + вібрація.
+// Точність: endTimeRef = Date.now() + remainingMs (без drift).
+// Cleanup: clearInterval + unloadSound() при розмонтуванні.
 // ============================================================
 
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -43,10 +31,10 @@ export function useCountdown(soundTheme: SoundTheme): UseCountdownReturn {
   const [isFinished, setIsFinished] = useState(false);
 
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const endTimeRef = useRef<number>(0);         // абсолютний момент закінчення
-  const soundLoadedRef = useRef<SoundTheme | null>(null); // яка тема зараз в пам'яті
+  const endTimeRef = useRef<number>(0);
+  const loadedThemeRef = useRef<SoundTheme | null>(null);
 
-  // Відновлення збереженої тривалості
+  // Відновлення збереженої тривалості при першому монтуванні
   useEffect(() => {
     AsyncStorage.getItem(STORAGE_KEYS.TIMER_DURATION)
       .then((val) => {
@@ -63,11 +51,11 @@ export function useCountdown(soundTheme: SoundTheme): UseCountdownReturn {
 
   // Перезавантаження звуку при зміні звукової теми
   useEffect(() => {
-    if (soundLoadedRef.current === soundTheme) return;
-    const themeOption = SOUND_THEMES.find((t) => t.key === soundTheme);
-    if (themeOption) {
-      loadSound(themeOption.assetPath).then(() => {
-        soundLoadedRef.current = soundTheme;
+    if (loadedThemeRef.current === soundTheme) return;
+    const option = SOUND_THEMES.find((t) => t.key === soundTheme);
+    if (option) {
+      loadSound(option.assetPath, option.vibrationPattern).then(() => {
+        loadedThemeRef.current = soundTheme;
       });
     }
   }, [soundTheme]);
@@ -76,7 +64,7 @@ export function useCountdown(soundTheme: SoundTheme): UseCountdownReturn {
   useEffect(() => {
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
-      unloadSound();
+      unloadSound().catch(() => {});
     };
   }, []);
 
@@ -97,16 +85,15 @@ export function useCountdown(soundTheme: SoundTheme): UseCountdownReturn {
     intervalRef.current = setInterval(() => {
       const left = endTimeRef.current - Date.now();
       if (left <= 0) {
-        // Таймер досяг нуля
         if (intervalRef.current) clearInterval(intervalRef.current);
         setRemainingMs(0);
         setIsRunning(false);
         setIsFinished(true);
-        playSound(); // відтворення сигналу завершення
+        playSound(); // аудіо + haptic + вібрація
       } else {
         setRemainingMs(left);
       }
-    }, 50); // 50 мс — баланс між плавністю і навантаженням на CPU
+    }, 50);
     setIsRunning(true);
     setIsFinished(false);
   }, [isRunning, remainingMs]);
@@ -124,14 +111,5 @@ export function useCountdown(soundTheme: SoundTheme): UseCountdownReturn {
     setRemainingMs(totalSeconds * 1000);
   }, [totalSeconds]);
 
-  return {
-    totalSeconds,
-    remainingMs,
-    isRunning,
-    isFinished,
-    setDuration,
-    start,
-    pause,
-    reset,
-  };
+  return { totalSeconds, remainingMs, isRunning, isFinished, setDuration, start, pause, reset };
 }

@@ -13,10 +13,9 @@
 //   тому він має бути всередині ThemeProvider.
 // ============================================================
 
-import React, { useEffect } from 'react';
+import React from 'react';
 import { View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import { Audio } from 'expo-av';
 import {
   useFonts,
   IBMPlexMono_300Light,
@@ -33,15 +32,6 @@ export default function App() {
     IBMPlexMono_400Regular,
     IBMPlexMono_500Medium,
   });
-
-  // Дозволяємо відтворення звуку на iOS навіть у беззвучному режимі.
-  // Без цього таймер не спрацює на iPhone з вимкненим дзвінком.
-  useEffect(() => {
-    Audio.setAudioModeAsync({
-      playsInSilentModeIOS: true,
-      staysActiveInBackground: false,
-    }).catch(() => {});
-  }, []);
 
   // Показуємо темний фон поки шрифти вантажаться (splash-подібний стан)
   if (!fontsLoaded) {

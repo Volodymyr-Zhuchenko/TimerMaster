@@ -27,6 +27,10 @@ export interface SoundThemeOption {
   key: SoundTheme;
   /** Назва теми українською */
   label: string;
-  /** Посилання на аудіо-ресурс через require() */
+  /** Опис характеру сигналу (для UI) */
+  description: string;
+  /** Статичне посилання на аудіо-ресурс (require) */
   assetPath: number;
+  /** Патерн вібрації у мс [затримка, вібрація, пауза, ...] */
+  vibrationPattern: number[];
 }
