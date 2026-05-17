@@ -1,0 +1,26 @@
+{
+  "expo": {
+    "name": "TimeMaster",
+    "slug": "timemaster",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "backgroundColor": "#0E0F12"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.zhuchenko.timemaster"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#0E0F12"
+      },
+      "package": "com.zhuchenko.timemaster"
+    },
+    "plugins": [
+      "expo-av",
+      "expo-font"
+    ]
+  }
+}
