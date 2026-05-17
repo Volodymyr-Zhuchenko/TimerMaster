@@ -16,6 +16,7 @@
 import React from 'react';
 import { View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import {
   useFonts,
   IBMPlexMono_300Light,
@@ -33,17 +34,18 @@ export default function App() {
     IBMPlexMono_500Medium,
   });
 
-  // Показуємо темний фон поки шрифти вантажаться (splash-подібний стан)
   if (!fontsLoaded) {
     return <View style={{ flex: 1, backgroundColor: '#0E0F12' }} />;
   }
 
   return (
-    <ThemeProvider>
-      <SettingsProvider>
-        <RootNavigator />
-        <StatusBar style="light" />
-      </SettingsProvider>
-    </ThemeProvider>
+    <SafeAreaProvider>
+      <ThemeProvider>
+        <SettingsProvider>
+          <RootNavigator />
+          <StatusBar style="auto" />
+        </SettingsProvider>
+      </ThemeProvider>
+    </SafeAreaProvider>
   );
 }
