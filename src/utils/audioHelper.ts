@@ -1,17 +1,15 @@
 // ============================================================
 // audioHelper — сигнал завершення таймера.
 //
-// Три рівні зворотного зв'язку при спрацюванні таймера:
-//   1. Аудіо (expo-av)     — відтворює timer-bell.mp3
-//   2. Haptic (expo-haptics) — тактильний удар на сумісних пристроях
-//   3. Vibration (RN API)  — патерн вібрації (різний для кожної теми)
+// Три рівні зворотного зв'язку:
+//   1. Аудіо (expo-av) — вбудований require() АБО URI кастомного файлу
+//   2. Haptic (expo-haptics) — тактильний удар
+//   3. Vibration (RN) — патерн вібрації (різний для кожної теми)
 //
-// Singleton _sound: Audio.Sound зберігається поза React state,
-// щоб уникнути зайвих ре-рендерів і гарантувати стабільне посилання
-// між асинхронними викликами.
-//
-// playsInSilentModeIOS: true — необхідно для iOS,
-// де система за замовчуванням блокує аудіо у беззвучному режимі.
+// loadSound приймає:
+//   number  — результат require('...mp3'), вбудована тема
+//   string  — URI файлу з documentDirectory (кастомний звук)
+//   null    — лише вібрація + haptic, без аудіо
 // ============================================================
 
 import { Audio } from 'expo-av';
@@ -21,28 +19,30 @@ import * as Haptics from 'expo-haptics';
 let _sound: Audio.Sound | null = null;
 let _vibrationPattern: number[] = [0, 600];
 
-// Встановлюємо аудіо-режим один раз при завантаженні модуля
+// Встановлюємо audio mode при завантаженні модуля
 Audio.setAudioModeAsync({
   playsInSilentModeIOS: true,
   staysActiveInBackground: false,
 }).catch(() => {});
 
 /**
- * Завантажує аудіо-файл і запам'ятовує патерн вібрації.
- * Викликається у useCountdown при зміні SoundTheme.
+ * Завантажує аудіо-джерело і запам'ятовує патерн вібрації.
  *
- * @param assetModule — результат require('...mp3')
- * @param vibrationPattern — масив ms: [затримка, вібрація, пауза, ...]
+ * @param source — number (require result), string (URI) або null
+ * @param vibrationPattern — масив ms для Vibration.vibrate()
  */
 export async function loadSound(
-  assetModule: number | null,
+  source: number | string | null,
   vibrationPattern: number[] = [0, 600],
 ): Promise<void> {
   await unloadSound();
   _vibrationPattern = vibrationPattern;
-  if (assetModule == null) return;
+  if (source == null) return;
+
   try {
-    const { sound } = await Audio.Sound.createAsync(assetModule);
+    // expo-av підтримує як module (number), так і { uri: string }
+    const avSource = typeof source === 'string' ? { uri: source } : source;
+    const { sound } = await Audio.Sound.createAsync(avSource);
     _sound = sound;
   } catch (e) {
     console.warn('[audioHelper] loadSound failed:', e);
@@ -50,16 +50,12 @@ export async function loadSound(
 }
 
 /**
- * Відтворює сигнал: аудіо + haptic + вібрація одночасно.
+ * Відтворює сигнал: haptic + вібрація + аудіо (якщо завантажено).
  */
 export async function playSound(): Promise<void> {
-  // Haptic feedback (не блокуємо на пристроях без підтримки)
   Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-
-  // Вібрація за обраним патерном
   Vibration.vibrate(_vibrationPattern);
 
-  // Аудіо (якщо завантажено)
   if (_sound) {
     try {
       await _sound.setPositionAsync(0);
@@ -71,17 +67,12 @@ export async function playSound(): Promise<void> {
 }
 
 /**
- * Зупиняє вібрацію та вивантажує аудіо-об'єкт із пам'яті.
- * Викликається у cleanup useEffect useCountdown.
+ * Зупиняє вібрацію та вивантажує аудіо-об'єкт.
  */
 export async function unloadSound(): Promise<void> {
   Vibration.cancel();
   if (_sound) {
-    try {
-      await _sound.unloadAsync();
-    } catch {
-      /* ігноруємо */
-    }
+    try { await _sound.unloadAsync(); } catch { /* ігноруємо */ }
     _sound = null;
   }
 }

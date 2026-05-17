@@ -17,7 +17,6 @@
 import React, { useState } from 'react';
 import { SafeAreaView, StyleSheet, Text, View } from 'react-native';
 import { useCountdown } from '@/hooks/useCountdown';
-import { useSettings } from '@/hooks/useSettings';
 import { useTheme } from '@/hooks/useTheme';
 import CircularProgress from '@/components/CircularProgress';
 import TimeDisplay from '@/components/TimeDisplay';
@@ -64,9 +63,8 @@ function TimeUnitPicker({
 }
 
 export default function TimerScreen() {
-  const { soundTheme } = useSettings();
   const { totalSeconds, remainingMs, isRunning, isFinished, setDuration, start, pause, reset } =
-    useCountdown(soundTheme);
+    useCountdown();
   const { colors } = useTheme();
 
   // Локальний стан picker (відображається лише коли таймер зупинений і не запущений)

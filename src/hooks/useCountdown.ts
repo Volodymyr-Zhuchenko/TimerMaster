@@ -1,8 +1,11 @@
 // ============================================================
 // useCountdown — логіка таймера зворотного відліку.
 //
-// При завершенні: playSound() → аудіо (timer-bell.mp3) + haptic + вібрація.
-// Точність: endTimeRef = Date.now() + remainingMs (без drift).
+// Вибір джерела звуку при кожній зміні soundTheme або customSounds:
+//   soundTheme є 'classic'/'digital' → вбудований assetPath + власна вібрація
+//   soundTheme є UUID кастомного     → URI з customSounds + вібрація 'classic'
+//
+// Точність: endTimeRef = Date.now() + remainingMs (drift виключено).
 // Cleanup: clearInterval + unloadSound() при розмонтуванні.
 // ============================================================
 
@@ -11,7 +14,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { STORAGE_KEYS } from '@/constants/storage';
 import { SOUND_THEMES } from '@/constants/soundThemes';
 import { loadSound, playSound, unloadSound } from '@/utils/audioHelper';
-import type { SoundTheme } from '@/types';
+import { useSettings } from '@/hooks/useSettings';
 
 export interface UseCountdownReturn {
   totalSeconds: number;
@@ -24,7 +27,8 @@ export interface UseCountdownReturn {
   reset: () => void;
 }
 
-export function useCountdown(soundTheme: SoundTheme): UseCountdownReturn {
+export function useCountdown(): UseCountdownReturn {
+  const { soundTheme, customSounds } = useSettings();
   const [totalSeconds, setTotalSeconds] = useState(0);
   const [remainingMs, setRemainingMs] = useState(0);
   const [isRunning, setIsRunning] = useState(false);
@@ -32,9 +36,8 @@ export function useCountdown(soundTheme: SoundTheme): UseCountdownReturn {
 
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const endTimeRef = useRef<number>(0);
-  const loadedThemeRef = useRef<SoundTheme | null>(null);
 
-  // Відновлення збереженої тривалості при першому монтуванні
+  // Відновлення тривалості з AsyncStorage
   useEffect(() => {
     AsyncStorage.getItem(STORAGE_KEYS.TIMER_DURATION)
       .then((val) => {
@@ -49,16 +52,18 @@ export function useCountdown(soundTheme: SoundTheme): UseCountdownReturn {
       .catch(() => {});
   }, []);
 
-  // Перезавантаження звуку при зміні звукової теми
+  // Завантаження звуку при зміні теми або списку кастомних звуків
   useEffect(() => {
-    if (loadedThemeRef.current === soundTheme) return;
-    const option = SOUND_THEMES.find((t) => t.key === soundTheme);
-    if (option) {
-      loadSound(option.assetPath, option.vibrationPattern).then(() => {
-        loadedThemeRef.current = soundTheme;
-      });
+    const builtIn = SOUND_THEMES.find((t) => t.key === soundTheme);
+    if (builtIn) {
+      // Вбудована тема: асет + власний патерн вібрації
+      loadSound(builtIn.assetPath, builtIn.vibrationPattern).catch(() => {});
+    } else {
+      // Кастомний звук: URI + вібрація як у 'classic'
+      const custom = customSounds.find((s) => s.id === soundTheme);
+      loadSound(custom?.uri ?? null, [0, 600]).catch(() => {});
     }
-  }, [soundTheme]);
+  }, [soundTheme, customSounds]);
 
   // Cleanup при розмонтуванні
   useEffect(() => {
@@ -89,7 +94,7 @@ export function useCountdown(soundTheme: SoundTheme): UseCountdownReturn {
         setRemainingMs(0);
         setIsRunning(false);
         setIsFinished(true);
-        playSound(); // аудіо + haptic + вібрація
+        playSound();
       } else {
         setRemainingMs(left);
       }

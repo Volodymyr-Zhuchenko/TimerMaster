@@ -1,36 +1,43 @@
 // ============================================================
 // Shared TypeScript types used across screens, hooks, and components.
-// Centralizing types here prevents circular imports and makes
-// refactoring straightforward — one place to change, everywhere updated.
 // ============================================================
 
 /** Визначає поточний режим теми оформлення */
 export type ThemeMode = 'dark' | 'light';
 
-/** Визначає обрану звукову тему для сповіщення таймера */
-export type SoundTheme = 'classic' | 'digital';
+/**
+ * Ідентифікатор активної звукової теми.
+ * Вбудовані: 'classic' | 'digital'
+ * Кастомні: UUID рядок (Date.now().toString())
+ */
+export type SoundTheme = string;
 
 /** Одне коло секундоміра */
 export interface LapEntry {
-  /** Унікальний рядковий ідентифікатор (Date.now().toString()) */
   id: string;
-  /** Порядковий номер кола (починаючи з 1) */
   index: number;
-  /** Загальний час у мілісекундах на момент фіксації кола */
   timeMs: number;
-  /** Час від попереднього кола до цього (мілісекунди) */
   splitMs: number;
 }
 
-/** Об'єкт звукової теми для відображення в Налаштуваннях */
+/** Вбудована звукова тема (статичний require) */
 export interface SoundThemeOption {
-  key: SoundTheme;
-  /** Назва теми українською */
+  key: string;
   label: string;
-  /** Опис характеру сигналу (для UI) */
   description: string;
-  /** Статичне посилання на аудіо-ресурс (require) */
   assetPath: number;
-  /** Патерн вібрації у мс [затримка, вібрація, пауза, ...] */
   vibrationPattern: number[];
+}
+
+/**
+ * Кастомний звук, імпортований користувачем.
+ * Зберігається у documentDirectory і в AsyncStorage.
+ */
+export interface CustomSound {
+  /** Унікальний ID: Date.now().toString() */
+  id: string;
+  /** Оригінальна назва файлу (для відображення в UI) */
+  name: string;
+  /** Абсолютний шлях до скопійованого файлу у documentDirectory */
+  uri: string;
 }

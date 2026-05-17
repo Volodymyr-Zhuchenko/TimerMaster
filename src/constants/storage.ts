@@ -2,9 +2,10 @@
 // застосунками чи бібліотеками, що використовують AsyncStorage.
 export const STORAGE_KEYS = {
   THEME: 'timemaster:theme',
+  /** Зберігає 'classic', 'digital' або UUID кастомного звуку */
   SOUND_THEME: 'timemaster:soundTheme',
-  /** Зберігається як JSON-рядок масиву LapEntry[] */
   STOPWATCH_LAPS: 'timemaster:stopwatch:laps',
-  /** Зберігається як рядок цілого числа (секунди) */
   TIMER_DURATION: 'timemaster:timer:duration',
+  /** JSON-рядок масиву CustomSound[] (до 5 елементів) */
+  CUSTOM_SOUNDS: 'timemaster:custom:sounds',
 } as const;
