@@ -1,207 +1,356 @@
-// ============================================================
-// TimerScreen — екран таймера зворотного відліку.
-//
-// Вибір часу: три стовпці кнопок +/- (Год / Хв / Сек).
-// Цей підхід обрано замість ScrollPicker або Picker,
-// оскільки не потребує додаткових бібліотек і добре
-// виглядає на будь-якому розмірі екрана.
-//
-// Кругова дуга: progress = remainingMs / (totalSeconds * 1000).
-// При progress=1 — повне кільце (щойно запущено або скинуто).
-// При progress=0 — порожнє кільце (завершено).
-//
-// Сигнал: useCountdown грає звук автоматично при left ≤ 0;
-// TimerScreen лише показує "Час вийшов!" та зелений текст.
-// ============================================================
-
 import React, { useState } from 'react';
-import { SafeAreaView, StyleSheet, Text, View } from 'react-native';
+import {
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import { useCountdown } from '@/hooks/useCountdown';
 import { useTheme } from '@/hooks/useTheme';
-import CircularProgress from '@/components/CircularProgress';
-import TimeDisplay from '@/components/TimeDisplay';
-import CustomButton from '@/components/CustomButton';
-import { formatSeconds } from '@/utils/timeFormat';
+import ScreenHeader from '@/components/ScreenHeader';
+import TickDial from '@/components/TickDial';
+import { FabButton, SideButton } from '@/components/CustomButton';
 import { FONT_FAMILY } from '@/constants/fonts';
 
-/** Кнопки +/- для однієї одиниці часу */
-function TimeUnitPicker({
+// ─── Wheel column (above / selected / below) ─────────────
+
+function Wheel({
   label,
   value,
   max,
   onChange,
-  colors,
 }: {
   label: string;
   value: number;
   max: number;
   onChange: (v: number) => void;
-  colors: ReturnType<typeof useTheme>['colors'];
 }) {
+  const { colors } = useTheme();
+  const d = (v: number) => String(v).padStart(2, '0');
+  const above = (value + 1) % (max + 1);
+  const below = (value - 1 + max + 1) % (max + 1);
+
   return (
-    <View style={styles.pickerCol}>
-      <Text
-        style={[styles.pickerBtn, { color: colors.accent }]}
-        onPress={() => onChange(Math.min(value + 1, max))}
+    <View style={styles.wheel}>
+      {/* Selection highlight */}
+      <View style={[styles.wheelHighlight, { backgroundColor: colors.surface, borderColor: colors.border }]} />
+
+      {/* Above (tap to increment) */}
+      <TouchableOpacity
+        style={styles.wheelAboveBelow}
+        onPress={() => onChange(above)}
+        activeOpacity={0.6}
       >
-        ▲
-      </Text>
-      <Text style={[styles.pickerVal, { color: colors.text, fontFamily: FONT_FAMILY.light }]}>
-        {String(value).padStart(2, '0')}
-      </Text>
-      <Text
-        style={[styles.pickerBtn, { color: colors.accent }]}
-        onPress={() => onChange(Math.max(value - 1, 0))}
+        <Text style={[styles.wheelDim, { color: colors.textDim, fontFamily: FONT_FAMILY.light }]}>
+          {d(above)}
+        </Text>
+      </TouchableOpacity>
+
+      {/* Selected */}
+      <View style={styles.wheelSelected}>
+        <Text style={[styles.wheelValue, { color: colors.text, fontFamily: FONT_FAMILY.light }]}>
+          {d(value)}
+        </Text>
+      </View>
+
+      {/* Below (tap to decrement) */}
+      <TouchableOpacity
+        style={styles.wheelAboveBelow}
+        onPress={() => onChange(below)}
+        activeOpacity={0.6}
       >
-        ▼
-      </Text>
-      <Text style={[styles.pickerLabel, { color: colors.textMuted, fontFamily: FONT_FAMILY.regular }]}>
+        <Text style={[styles.wheelDim, { color: colors.textDim, fontFamily: FONT_FAMILY.light }]}>
+          {d(below)}
+        </Text>
+      </TouchableOpacity>
+
+      {/* Label */}
+      <Text style={[styles.wheelLabel, { color: colors.textMuted, fontFamily: FONT_FAMILY.regular }]}>
         {label}
       </Text>
     </View>
   );
 }
 
-export default function TimerScreen() {
-  const { totalSeconds, remainingMs, isRunning, isFinished, setDuration, start, pause, reset } =
-    useCountdown();
-  const { colors } = useTheme();
+// ─── Preset chips ─────────────────────────────────────────
 
-  // Локальний стан picker (відображається лише коли таймер зупинений і не запущений)
+const PRESETS = [
+  { l: '1 хв', h: 0, m: 1, s: 0 },
+  { l: '3 хв', h: 0, m: 3, s: 0 },
+  { l: '5 хв', h: 0, m: 5, s: 0 },
+  { l: '10 хв', h: 0, m: 10, s: 0 },
+  { l: '25 хв', h: 0, m: 25, s: 0 },
+  { l: '1 год', h: 1, m: 0, s: 0 },
+];
+
+// ─── Main screen ─────────────────────────────────────────
+
+export default function TimerScreen() {
+  const { colors } = useTheme();
+  const {
+    totalSeconds,
+    remainingMs,
+    isRunning,
+    isFinished,
+    startWithDuration,
+    start,
+    pause,
+    reset,
+  } = useCountdown();
+
   const [pickerH, setPickerH] = useState(0);
-  const [pickerM, setPickerM] = useState(0);
+  const [pickerM, setPickerM] = useState(4);
   const [pickerS, setPickerS] = useState(30);
 
-  // Чи показуємо picker (вибір часу) чи дисплей зворотного відліку
   const isIdle = !isRunning && remainingMs === totalSeconds * 1000 && !isFinished;
+  const ready = pickerH + pickerM + pickerS > 0;
 
+  // For run mode display
   const progress = totalSeconds > 0 ? remainingMs / (totalSeconds * 1000) : 1;
-  const displayTime = formatSeconds(Math.ceil(remainingMs / 1000));
+  const remSec = Math.ceil(remainingMs / 1000);
+  const rh = Math.floor(remSec / 3600);
+  const rm = Math.floor((remSec % 3600) / 60);
+  const rs = remSec % 60;
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const displayTime = rh > 0
+    ? `${pad(rh)}:${pad(rm)}:${pad(rs)}`
+    : `${pad(rm)}:${pad(rs)}`;
+  const pct = totalSeconds > 0
+    ? Math.round((1 - remainingMs / (totalSeconds * 1000)) * 100)
+    : 0;
 
-  function handleSet() {
-    const total = pickerH * 3600 + pickerM * 60 + pickerS;
-    if (total > 0) setDuration(total);
-  }
+  // Alert time pill
+  const alertDate = new Date(Date.now() + remainingMs);
+  const alertStr = `${alertDate.getHours()}:${String(alertDate.getMinutes()).padStart(2, '0')}`;
+
+  const handleStart = () => {
+    if (!ready) return;
+    startWithDuration(pickerH * 3600 + pickerM * 60 + pickerS);
+  };
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* Picker вибору часу */}
-      {isIdle && (
-        <View style={styles.pickerRow}>
-          <TimeUnitPicker
-            label="год"
-            value={pickerH}
-            max={23}
-            onChange={setPickerH}
-            colors={colors}
-          />
-          <Text style={[styles.colon, { color: colors.textMuted }]}>:</Text>
-          <TimeUnitPicker
-            label="хв"
-            value={pickerM}
-            max={59}
-            onChange={setPickerM}
-            colors={colors}
-          />
-          <Text style={[styles.colon, { color: colors.textMuted }]}>:</Text>
-          <TimeUnitPicker
-            label="сек"
-            value={pickerS}
-            max={59}
-            onChange={setPickerS}
-            colors={colors}
-          />
+      {/* Header */}
+      <ScreenHeader
+        subtitle="02 · Таймер"
+        title="Таймер"
+        right={
+          <Text style={[styles.headerStatus, {
+            color: isRunning ? colors.start : colors.textMuted,
+            fontFamily: FONT_FAMILY.regular,
+          }]}>
+            {isIdle ? 'Налаштування' : isRunning ? 'Зворотний відлік' : 'Пауза'}
+          </Text>
+        }
+      />
+
+      {isIdle ? (
+        /* ── Picker mode ── */
+        <View style={styles.flex}>
+          {/* Wheel row */}
+          <View style={styles.wheelRow}>
+            <Wheel label="Год" value={pickerH} max={23} onChange={setPickerH} />
+            <Text style={[styles.colon, { color: colors.textDim, fontFamily: FONT_FAMILY.light }]}>:</Text>
+            <Wheel label="Хв" value={pickerM} max={59} onChange={setPickerM} />
+            <Text style={[styles.colon, { color: colors.textDim, fontFamily: FONT_FAMILY.light }]}>:</Text>
+            <Wheel label="Сек" value={pickerS} max={59} onChange={setPickerS} />
+          </View>
+
+          {/* Presets */}
+          <View style={styles.presetsWrapper}>
+            <Text style={[styles.presetsLabel, { color: colors.textMuted, fontFamily: FONT_FAMILY.regular }]}>
+              Швидкий вибір
+            </Text>
+            <View style={styles.presetsGrid}>
+              {PRESETS.map((p) => {
+                const isActive = p.h === pickerH && p.m === pickerM && p.s === pickerS;
+                return (
+                  <TouchableOpacity
+                    key={p.l}
+                    onPress={() => { setPickerH(p.h); setPickerM(p.m); setPickerS(p.s); }}
+                    activeOpacity={0.7}
+                    style={[
+                      styles.preset,
+                      {
+                        backgroundColor: isActive ? colors.surface3 : colors.surface,
+                        borderColor: isActive ? colors.text : colors.border,
+                      },
+                    ]}
+                  >
+                    <Text style={[styles.presetLabel, { color: colors.text, fontFamily: FONT_FAMILY.medium }]}>
+                      {p.l}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+
+          <View style={styles.flex} />
+
+          {/* Buttons */}
+          <View style={[styles.btnRow, { borderTopColor: colors.borderSoft }]}>
+            <View style={styles.btnSide}>
+              <SideButton
+                label="Очистити"
+                onPress={() => { setPickerH(0); setPickerM(0); setPickerS(0); }}
+                disabled={!ready}
+              />
+            </View>
+            <FabButton running={false} kind="start" onPress={handleStart} disabled={!ready} />
+            <View style={styles.btnSide} />
+          </View>
+        </View>
+      ) : (
+        /* ── Run mode ── */
+        <View style={styles.flex}>
+          <View style={styles.dialWrapper}>
+            <TickDial frac={progress} size={300}>
+              <View style={styles.dialCenter}>
+                <Text style={[styles.dialHint, { color: colors.textMuted, fontFamily: FONT_FAMILY.regular }]}>
+                  Залишилось
+                </Text>
+                <Text style={[styles.dialTime, { color: isFinished ? colors.start : colors.text, fontFamily: FONT_FAMILY.light }]}>
+                  {isFinished ? 'Час вийшов!' : displayTime}
+                </Text>
+                {!isFinished && (
+                  <Text style={[styles.dialPct, { color: colors.textMuted, fontFamily: FONT_FAMILY.regular }]}>
+                    {pct}% / 100%
+                  </Text>
+                )}
+              </View>
+            </TickDial>
+
+            {/* Alert time pill */}
+            {!isFinished && (
+              <View style={[styles.alertPill, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                <Text style={[styles.alertText, { color: colors.textMuted, fontFamily: FONT_FAMILY.regular }]}>
+                  🔔 Сповіщення о {alertStr}
+                </Text>
+              </View>
+            )}
+          </View>
+
+          {/* Buttons */}
+          <View style={[styles.btnRow, { borderTopColor: colors.borderSoft }]}>
+            <View style={styles.btnSide}>
+              <SideButton label="Скидання" onPress={reset} />
+            </View>
+            {isFinished ? (
+              <FabButton running={false} kind="start" onPress={reset} />
+            ) : (
+              <FabButton running={isRunning} onPress={isRunning ? pause : start} />
+            )}
+            <View style={styles.btnSide} />
+          </View>
         </View>
       )}
-
-      {/* Кругова дуга з відліком */}
-      <View style={styles.ringWrapper}>
-        <CircularProgress size={280} strokeWidth={12} progress={progress}>
-          <TimeDisplay time={displayTime} size="small" />
-          {isFinished && (
-            <Text
-              style={[styles.finishedLabel, { color: colors.accent, fontFamily: FONT_FAMILY.regular }]}
-            >
-              Час вийшов!
-            </Text>
-          )}
-        </CircularProgress>
-      </View>
-
-      {/* Кнопки керування */}
-      <View style={styles.buttonRow}>
-        {isIdle && (
-          <CustomButton
-            label="Встановити"
-            onPress={handleSet}
-            variant="secondary"
-            disabled={pickerH === 0 && pickerM === 0 && pickerS === 0}
-          />
-        )}
-        {!isIdle && !isRunning && !isFinished && (
-          <CustomButton label="Старт" onPress={start} variant="primary" />
-        )}
-        {isRunning && (
-          <CustomButton label="Пауза" onPress={pause} variant="secondary" />
-        )}
-        {!isIdle && (
-          <CustomButton label="Скинути" onPress={reset} variant="danger" />
-        )}
-        {isFinished && (
-          <CustomButton label="Новий таймер" onPress={reset} variant="primary" />
-        )}
-      </View>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  container: { flex: 1 },
+  flex: { flex: 1, flexDirection: 'column' },
+
+  headerStatus: { fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase' },
+
+  // Wheel
+  wheelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingTop: 28,
+    paddingBottom: 16,
+    paddingHorizontal: 24,
+    gap: 6,
+  },
+  wheel: {
+    width: 86,
+    height: 190,
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  wheelHighlight: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 58, // (190 - 64) / 2 ≈ 63 → adjust for label space
+    height: 64,
+    borderRadius: 16,
+    borderWidth: 1,
+  },
+  wheelAboveBelow: {
+    height: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: '100%',
+  },
+  wheelDim: { fontSize: 22, fontWeight: '300' },
+  wheelSelected: {
+    height: 64,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1,
+  },
+  wheelValue: { fontSize: 44, letterSpacing: -1 },
+  wheelLabel: {
+    fontSize: 10,
+    letterSpacing: 2,
+    textTransform: 'uppercase',
+    marginTop: 6,
+    fontWeight: '600',
+  },
+  colon: { fontSize: 48, fontWeight: '200', marginBottom: 20 },
+
+  // Presets
+  presetsWrapper: { paddingHorizontal: 24, paddingBottom: 8 },
+  presetsLabel: { fontSize: 10, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 10 },
+  presetsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  preset: {
+    flex: 1,
+    minWidth: '30%',
+    paddingVertical: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+    alignItems: 'center',
+  },
+  presetLabel: { fontSize: 14, letterSpacing: 0.5 },
+
+  // Run mode
+  dialWrapper: {
     flex: 1,
     alignItems: 'center',
-    paddingHorizontal: 24,
-    paddingTop: 16,
-  },
-  pickerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 24,
-  },
-  pickerCol: {
-    alignItems: 'center',
-    width: 64,
-  },
-  pickerBtn: {
-    fontSize: 22,
-    padding: 6,
-  },
-  pickerVal: {
-    fontSize: 36,
-    letterSpacing: -1,
-    marginVertical: 4,
-  },
-  pickerLabel: {
-    fontSize: 11,
-    letterSpacing: 1,
-    marginTop: 4,
-  },
-  colon: {
-    fontSize: 32,
-    marginBottom: 20,
-    marginHorizontal: 4,
-  },
-  ringWrapper: {
-    marginVertical: 24,
-  },
-  buttonRow: {
-    flexDirection: 'row',
-    gap: 12,
-    flexWrap: 'wrap',
     justifyContent: 'center',
+    paddingHorizontal: 24,
+    gap: 20,
   },
-  finishedLabel: {
-    fontSize: 13,
-    marginTop: 6,
-    letterSpacing: 0.5,
+  dialCenter: { alignItems: 'center', gap: 6 },
+  dialHint: { fontSize: 10, letterSpacing: 2, textTransform: 'uppercase' },
+  dialTime: { fontSize: 52, fontWeight: '200', letterSpacing: -2, lineHeight: 56 },
+  dialPct: { fontSize: 12, letterSpacing: 1, marginTop: 4 },
+  alertPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 999,
+    borderWidth: 1,
+    gap: 6,
   },
+  alertText: { fontSize: 11, letterSpacing: 1, textTransform: 'uppercase' },
+
+  // Buttons
+  btnRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+    paddingVertical: 16,
+    borderTopWidth: 1,
+    gap: 12,
+  },
+  btnSide: { flex: 1, alignItems: 'flex-end' },
 });

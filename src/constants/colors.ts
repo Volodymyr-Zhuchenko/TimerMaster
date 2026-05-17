@@ -1,47 +1,60 @@
-// ============================================================
-// Дизайн-система TimeMaster: два повних набори кольорів.
-// Усі компоненти отримують кольори через хук useTheme() —
-// це дозволяє миттєво змінювати тему без перемонтування дерева.
-// ============================================================
-
 export interface ThemeColors {
   background: string;
-  /** Фон карток і рядків списку */
   surface: string;
-  /** Зелений акцент — кнопки, активна дуга, виділений елемент */
-  accent: string;
-  /** Колір кордонів, неактивна дуга прогресу */
+  surface2: string;
+  surface3: string;
+  /** Green — running state, active selection, progress */
+  start: string;
+  startInk: string;
+  /** Red — pause, stop, danger */
+  stop: string;
+  stopInk: string;
+  /** Blue — lap highlights */
+  lap: string;
+  lapInk: string;
   border: string;
-  /** Основний текст */
+  borderSoft: string;
   text: string;
-  /** Другорядний текст (підписи, мітки) */
   textMuted: string;
-  /** Фон нижньої панелі навігації */
-  tabBar: string;
-  tabBarActive: string;
-  tabBarInactive: string;
+  textDim: string;
+  /** Idle tick marks in TickDial */
+  tickIdle: string;
 }
 
 export const DARK_THEME: ThemeColors = {
   background: '#0E0F12',
-  surface: '#161920',
-  accent: '#5BE584',
+  surface: '#16181C',
+  surface2: '#1E2126',
+  surface3: '#262A30',
+  start: '#5BE584',
+  startInk: '#0A2914',
+  stop: '#FF6B6B',
+  stopInk: '#2A0808',
+  lap: '#6E9BFF',
+  lapInk: '#0A1530',
   border: '#262A30',
+  borderSoft: '#1E2126',
   text: '#ECECEC',
   textMuted: '#8B9098',
-  tabBar: '#0E0F12',
-  tabBarActive: '#5BE584',
-  tabBarInactive: '#8B9098',
+  textDim: '#5A6068',
+  tickIdle: '#2A2E35',
 };
 
 export const LIGHT_THEME: ThemeColors = {
-  background: '#F4F5F7',
+  background: '#F6F6F4',
   surface: '#FFFFFF',
-  accent: '#2CA85A',
-  border: '#D8DBE0',
-  text: '#1A1C20',
-  textMuted: '#6B7280',
-  tabBar: '#FFFFFF',
-  tabBarActive: '#2CA85A',
-  tabBarInactive: '#9CA3AF',
+  surface2: '#F0F0EC',
+  surface3: '#E7E7E2',
+  start: '#16A34A',
+  startInk: '#FFFFFF',
+  stop: '#E63946',
+  stopInk: '#FFFFFF',
+  lap: '#2D6AE0',
+  lapInk: '#FFFFFF',
+  border: '#E5E5E0',
+  borderSoft: '#EFEFEA',
+  text: '#161616',
+  textMuted: '#6A6E73',
+  textDim: '#A0A4AA',
+  tickIdle: '#DCDCD6',
 };

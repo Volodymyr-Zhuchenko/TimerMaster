@@ -23,6 +23,8 @@ export interface UseCountdownReturn {
   isFinished: boolean;
   setDuration: (seconds: number) => void;
   start: () => void;
+  /** Sets duration and starts immediately — avoids async-state race. */
+  startWithDuration: (seconds: number) => void;
   pause: () => void;
   reset: () => void;
 }
@@ -103,6 +105,34 @@ export function useCountdown(): UseCountdownReturn {
     setIsFinished(false);
   }, [isRunning, remainingMs]);
 
+  const startWithDuration = useCallback(
+    (seconds: number) => {
+      if (isRunning || seconds <= 0) return;
+      const ms = seconds * 1000;
+      setTotalSeconds(seconds);
+      setRemainingMs(ms);
+      setIsFinished(false);
+      AsyncStorage.setItem(STORAGE_KEYS.TIMER_DURATION, String(seconds)).catch(() => {});
+
+      if (intervalRef.current) clearInterval(intervalRef.current);
+      endTimeRef.current = Date.now() + ms;
+      intervalRef.current = setInterval(() => {
+        const left = endTimeRef.current - Date.now();
+        if (left <= 0) {
+          if (intervalRef.current) clearInterval(intervalRef.current);
+          setRemainingMs(0);
+          setIsRunning(false);
+          setIsFinished(true);
+          playSound();
+        } else {
+          setRemainingMs(left);
+        }
+      }, 50);
+      setIsRunning(true);
+    },
+    [isRunning],
+  );
+
   const pause = useCallback(() => {
     if (!isRunning) return;
     if (intervalRef.current) clearInterval(intervalRef.current);
@@ -116,5 +146,5 @@ export function useCountdown(): UseCountdownReturn {
     setRemainingMs(totalSeconds * 1000);
   }, [totalSeconds]);
 
-  return { totalSeconds, remainingMs, isRunning, isFinished, setDuration, start, pause, reset };
+  return { totalSeconds, remainingMs, isRunning, isFinished, setDuration, start, startWithDuration, pause, reset };
 }

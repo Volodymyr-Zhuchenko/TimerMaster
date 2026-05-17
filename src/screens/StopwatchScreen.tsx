@@ -1,121 +1,197 @@
-// ============================================================
-// StopwatchScreen — екран секундоміра.
-//
-// Стан кнопок залежить від isRunning і elapsedMs:
-//   elapsedMs === 0, !isRunning → [Старт]
-//   isRunning                  → [Пауза] [Коло]
-//   elapsedMs > 0, !isRunning  → [Продовжити] [Скинути]
-//
-// Список кіл (FlatList) відображає коло №N, час сплітування
-// і загальний час. Перше (найновіше) коло підсвічено акцентом.
-// Заголовки колонок приховані при порожньому списку.
-// ============================================================
-
 import React from 'react';
-import { FlatList, SafeAreaView, StyleSheet, Text, View } from 'react-native';
+import {
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { useStopwatch } from '@/hooks/useStopwatch';
 import { useTheme } from '@/hooks/useTheme';
-import TimeDisplay from '@/components/TimeDisplay';
-import CustomButton from '@/components/CustomButton';
+import ScreenHeader from '@/components/ScreenHeader';
 import LapItem from '@/components/LapItem';
-import { formatMs } from '@/utils/timeFormat';
+import { FabButton, SideButton } from '@/components/CustomButton';
+import { formatMsDisplay, formatMsLap } from '@/utils/timeFormat';
 import { FONT_FAMILY } from '@/constants/fonts';
 
 export default function StopwatchScreen() {
   const { elapsedMs, isRunning, laps, start, pause, reset, lap } = useStopwatch();
   const { colors } = useTheme();
 
-  const showLapHeaders = laps.length > 0;
+  const { main, cents } = formatMsDisplay(elapsedMs);
+  const currentLapMs = elapsedMs - (laps[0]?.timeMs ?? 0);
+
+  // Fastest / slowest detection (only when ≥ 2 laps)
+  const lapSplits = laps.map((l) => l.splitMs);
+  const minSplit = lapSplits.length >= 2 ? Math.min(...lapSplits) : -1;
+  const maxSplit = lapSplits.length >= 2 ? Math.max(...lapSplits) : -1;
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* Головний дисплей часу */}
-      <View style={styles.displayWrapper}>
-        <TimeDisplay time={formatMs(elapsedMs)} size="large" />
-      </View>
+      {/* ── Header ── */}
+      <ScreenHeader
+        subtitle="01 · Секундомір"
+        title="Секундомір"
+        right={
+          <View style={styles.statusRow}>
+            <View style={[
+              styles.statusDot,
+              {
+                backgroundColor: isRunning ? colors.start : colors.textMuted,
+                shadowColor: isRunning ? colors.start : 'transparent',
+              },
+            ]} />
+            <Text style={[styles.statusLabel, {
+              color: isRunning ? colors.start : colors.textMuted,
+              fontFamily: FONT_FAMILY.regular,
+            }]}>
+              {isRunning ? 'Запущено' : 'Пауза'}
+            </Text>
+          </View>
+        }
+      />
 
-      {/* Рядок кнопок керування */}
-      <View style={styles.buttonRow}>
-        {!isRunning && elapsedMs === 0 && (
-          <CustomButton label="Старт" onPress={start} variant="primary" />
-        )}
-        {isRunning && (
-          <>
-            <CustomButton label="Пауза" onPress={pause} variant="secondary" />
-            <CustomButton label="Коло" onPress={lap} variant="secondary" />
-          </>
-        )}
-        {!isRunning && elapsedMs > 0 && (
-          <>
-            <CustomButton label="Продовжити" onPress={start} variant="primary" />
-            <CustomButton label="Скинути" onPress={reset} variant="danger" />
-          </>
-        )}
-      </View>
-
-      {/* Заголовки колонок */}
-      {showLapHeaders && (
-        <View style={[styles.lapHeader, { borderBottomColor: colors.border }]}>
-          <Text style={[styles.colLabel, { color: colors.textMuted, fontFamily: FONT_FAMILY.regular }]}>
-            Коло
+      {/* ── Big time display ── */}
+      <View style={styles.timeBlock}>
+        <Text style={[styles.timeLabel, { color: colors.textMuted, fontFamily: FONT_FAMILY.regular }]}>
+          Загальний час
+        </Text>
+        <View style={styles.timeRow}>
+          <Text style={[styles.timeMain, { color: colors.text, fontFamily: FONT_FAMILY.light }]}>
+            {main}
           </Text>
-          <Text style={[styles.colLabel, styles.colCenter, { color: colors.textMuted, fontFamily: FONT_FAMILY.regular }]}>
-            Сплітування
-          </Text>
-          <Text style={[styles.colLabel, styles.colRight, { color: colors.textMuted, fontFamily: FONT_FAMILY.regular }]}>
-            Загальний
+          <Text style={[styles.timeCents, { color: colors.textMuted, fontFamily: FONT_FAMILY.light }]}>
+            .{cents}
           </Text>
         </View>
-      )}
+        {/* Current lap pill */}
+        <View style={[styles.lapPill, { backgroundColor: colors.surface2, borderColor: colors.border }]}>
+          <Text style={[styles.lapPillText, { color: colors.textMuted, fontFamily: FONT_FAMILY.regular }]}>
+            КОЛО {laps.length + 1} ·{' '}
+            <Text style={{ color: colors.text }}>{formatMsLap(currentLapMs)}</Text>
+          </Text>
+        </View>
+      </View>
 
-      {/* Список кіл */}
-      <FlatList
-        data={laps}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item, index }) => (
-          <LapItem lap={item} isFirst={index === 0} />
+      {/* ── Lap list ── */}
+      <View style={styles.lapListWrapper}>
+        {laps.length === 0 ? (
+          <View style={styles.emptyState}>
+            <Text style={[styles.emptyTitle, { color: colors.textMuted, fontFamily: FONT_FAMILY.regular }]}>
+              Немає кіл
+            </Text>
+            <Text style={[styles.emptyBody, { color: colors.textDim, fontFamily: FONT_FAMILY.regular }]}>
+              Натисніть «Коло», щоб зафіксувати проміжний час.
+            </Text>
+          </View>
+        ) : (
+          <View style={[styles.lapCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            {/* Table header */}
+            <View style={[styles.lapHeader, { borderBottomColor: colors.border }]}>
+              <Text style={[styles.lapHeaderNum, { color: colors.textMuted, fontFamily: FONT_FAMILY.regular }]}>#</Text>
+              <Text style={[styles.lapHeaderCell, { color: colors.textMuted, fontFamily: FONT_FAMILY.regular }]}>Коло</Text>
+              <Text style={[styles.lapHeaderCell, { color: colors.textMuted, fontFamily: FONT_FAMILY.regular }]}>Загальне</Text>
+              <View style={styles.lapHeaderIcon} />
+            </View>
+            <ScrollView style={styles.lapScroll} showsVerticalScrollIndicator={false}>
+              {laps.map((item) => (
+                <LapItem
+                  key={item.id}
+                  lap={item}
+                  isFastest={lapSplits.length >= 2 && item.splitMs === minSplit}
+                  isSlowest={lapSplits.length >= 2 && item.splitMs === maxSplit}
+                />
+              ))}
+            </ScrollView>
+          </View>
         )}
-        style={styles.lapList}
-        contentContainerStyle={styles.lapListContent}
-      />
+      </View>
+
+      {/* ── Button row ── */}
+      <View style={[styles.btnRow, { borderTopColor: colors.borderSoft }]}>
+        <View style={styles.btnSide}>
+          <SideButton
+            label="Скидання"
+            onPress={reset}
+            disabled={isRunning && laps.length === 0 && elapsedMs === 0}
+          />
+        </View>
+        <FabButton
+          running={isRunning}
+          onPress={isRunning ? pause : start}
+        />
+        <View style={styles.btnSide}>
+          <SideButton
+            label="Коло"
+            onPress={lap}
+            disabled={!isRunning}
+          />
+        </View>
+      </View>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  container: { flex: 1 },
+
+  statusRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  statusDot: {
+    width: 6, height: 6, borderRadius: 3,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  statusLabel: { fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase' },
+
+  timeBlock: { paddingHorizontal: 24, paddingBottom: 16, alignItems: 'center', gap: 8 },
+  timeLabel: { fontSize: 14, letterSpacing: 3, textTransform: 'uppercase' },
+  timeRow: { flexDirection: 'row', alignItems: 'baseline' },
+  timeMain: { fontSize: 84, lineHeight: 84, letterSpacing: -3 },
+  timeCents: { fontSize: 40, marginLeft: 4 },
+
+  lapPill: {
+    marginTop: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 999,
+    borderWidth: 1,
+  },
+  lapPillText: { fontSize: 13, letterSpacing: 0.5 },
+
+  lapListWrapper: { flex: 1, paddingHorizontal: 24 },
+
+  emptyState: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 32 },
+  emptyTitle: { fontSize: 16, marginBottom: 6 },
+  emptyBody: { fontSize: 13, textAlign: 'center' },
+
+  lapCard: {
+    borderRadius: 20,
+    borderWidth: 1,
+    overflow: 'hidden',
     flex: 1,
-    paddingHorizontal: 24,
-    paddingTop: 16,
-  },
-  displayWrapper: {
-    alignItems: 'center',
-    paddingVertical: 32,
-  },
-  buttonRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 12,
-    marginBottom: 24,
   },
   lapHeader: {
     flexDirection: 'row',
-    paddingVertical: 8,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    marginBottom: 4,
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    gap: 8,
   },
-  colLabel: {
-    flex: 1,
-    fontSize: 11,
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
+  lapHeaderNum: { width: 36, fontSize: 10, letterSpacing: 2, textTransform: 'uppercase' },
+  lapHeaderCell: { flex: 1, fontSize: 10, letterSpacing: 2, textTransform: 'uppercase' },
+  lapHeaderIcon: { width: 36 },
+  lapScroll: { flex: 1 },
+
+  btnRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+    paddingVertical: 16,
+    borderTopWidth: 1,
+    gap: 12,
   },
-  colCenter: { flex: 1.5, textAlign: 'center' },
-  colRight: { flex: 1.5, textAlign: 'right' },
-  lapList: {
-    flex: 1,
-  },
-  lapListContent: {
-    paddingBottom: 24,
-  },
+  btnSide: { flex: 1, alignItems: 'flex-end' },
 });

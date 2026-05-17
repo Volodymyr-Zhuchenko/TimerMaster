@@ -1,39 +1,68 @@
-// ============================================================
-// LapItem — один рядок у списку кіл секундоміра.
-//
-// Колонки: "Коло N" | час сплітування | загальний час.
-// Перше коло (isFirst=true) підсвічується акцентним кольором —
-// це завжди поточне (останнє додане) коло у списку.
-// ============================================================
-
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import Svg, { Path } from 'react-native-svg';
 import { useTheme } from '@/hooks/useTheme';
 import type { LapEntry } from '@/types';
-import { formatMs } from '@/utils/timeFormat';
+import { formatMsLap } from '@/utils/timeFormat';
 import { FONT_FAMILY } from '@/constants/fonts';
+
+function ArrowDownIcon({ color }: { color: string }) {
+  return (
+    <Svg width={14} height={14} viewBox="0 0 24 24">
+      <Path d="M6 9l6 7 6-7" stroke={color} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" fill="none" />
+    </Svg>
+  );
+}
+
+function ArrowUpIcon({ color }: { color: string }) {
+  return (
+    <Svg width={14} height={14} viewBox="0 0 24 24">
+      <Path d="M6 15l6-7 6 7" stroke={color} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" fill="none" />
+    </Svg>
+  );
+}
 
 interface Props {
   lap: LapEntry;
-  /** true для першого елемента FlatList (найновіше коло) */
-  isFirst: boolean;
+  isFastest: boolean;
+  isSlowest: boolean;
 }
 
-export default function LapItem({ lap, isFirst }: Props) {
+export default function LapItem({ lap, isFastest, isSlowest }: Props) {
   const { colors } = useTheme();
-  const labelColor = isFirst ? colors.accent : colors.textMuted;
+
+  const timeColor = isFastest ? colors.start : isSlowest ? colors.stop : colors.text;
 
   return (
-    <View style={[styles.row, { borderBottomColor: colors.border }]}>
-      <Text style={[styles.index, { color: labelColor, fontFamily: FONT_FAMILY.regular }]}>
-        Коло {lap.index}
+    <View style={[styles.row, { borderBottomColor: colors.borderSoft }]}>
+      {/* # */}
+      <Text style={[styles.num, { color: colors.textMuted, fontFamily: FONT_FAMILY.regular }]}>
+        {String(lap.index).padStart(2, '0')}
       </Text>
-      <Text style={[styles.split, { color: colors.textMuted, fontFamily: FONT_FAMILY.regular }]}>
-        {formatMs(lap.splitMs)}
+
+      {/* Коло */}
+      <Text style={[styles.split, { color: timeColor, fontFamily: FONT_FAMILY.regular }]}>
+        {formatMsLap(lap.splitMs)}
       </Text>
-      <Text style={[styles.total, { color: colors.text, fontFamily: FONT_FAMILY.regular }]}>
-        {formatMs(lap.timeMs)}
+
+      {/* Загальне */}
+      <Text style={[styles.total, { color: colors.textMuted, fontFamily: FONT_FAMILY.regular }]}>
+        {formatMsLap(lap.timeMs)}
       </Text>
+
+      {/* Indicator */}
+      <View style={styles.icon}>
+        {isFastest && (
+          <View style={[styles.badge, { backgroundColor: `${colors.start}22` }]}>
+            <ArrowDownIcon color={colors.start} />
+          </View>
+        )}
+        {isSlowest && (
+          <View style={[styles.badge, { backgroundColor: `${colors.stop}22` }]}>
+            <ArrowUpIcon color={colors.stop} />
+          </View>
+        )}
+      </View>
     </View>
   );
 }
@@ -41,23 +70,34 @@ export default function LapItem({ lap, isFirst }: Props) {
 const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    gap: 8,
   },
-  index: {
-    flex: 1,
-    fontSize: 13,
+  num: {
+    width: 36,
+    fontSize: 14,
+    letterSpacing: 1,
   },
   split: {
-    flex: 1.5,
-    fontSize: 13,
-    textAlign: 'center',
+    flex: 1,
+    fontSize: 17,
   },
   total: {
-    flex: 1.5,
-    fontSize: 13,
-    textAlign: 'right',
+    flex: 1,
+    fontSize: 15,
+  },
+  icon: {
+    width: 36,
+    alignItems: 'flex-end',
+  },
+  badge: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

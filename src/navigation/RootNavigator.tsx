@@ -1,31 +1,25 @@
-// ============================================================
-// RootNavigator — нижня панель навігації (3 вкладки).
-//
-// Кольори tab bar читаються з useTheme() — при перемиканні теми
-// в Налаштуваннях вся навігаційна панель оновлює кольори без
-// перезапуску застосунку.
-//
-// Іконки: Emoji-символи працюють на iOS і Android без додаткових
-// бібліотек. Для виробничого застосунку можна замінити на
-// @expo/vector-icons (Ionicons), але для навчального проєкту
-// emoji цілком достатньо.
-// ============================================================
-
 import React from 'react';
+import { StyleSheet, Text, View } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Text } from 'react-native';
 import { useTheme } from '@/hooks/useTheme';
 import StopwatchScreen from '@/screens/StopwatchScreen';
 import TimerScreen from '@/screens/TimerScreen';
 import SettingsScreen from '@/screens/SettingsScreen';
-import { FONT_FAMILY } from '@/constants/fonts';
 
 const Tab = createBottomTabNavigator();
 
-/** Міні-іконка для вкладки (emoji + розмір) */
-function TabIcon({ emoji, color }: { emoji: string; color: string }) {
-  return <Text style={{ fontSize: 22, color }}>{emoji}</Text>;
+// Pill-style tab icon matching the design spec
+function TabIcon({ emoji, focused }: { emoji: string; focused: boolean }) {
+  const { colors } = useTheme();
+  return (
+    <View style={[
+      styles.pill,
+      { backgroundColor: focused ? colors.surface3 : 'transparent' },
+    ]}>
+      <Text style={styles.emoji}>{emoji}</Text>
+    </View>
+  );
 }
 
 export default function RootNavigator() {
@@ -37,41 +31,57 @@ export default function RootNavigator() {
         screenOptions={{
           headerShown: false,
           tabBarStyle: {
-            backgroundColor: colors.tabBar,
+            backgroundColor: colors.surface,
             borderTopColor: colors.border,
             borderTopWidth: 1,
+            paddingTop: 6,
+            paddingBottom: 10,
+            height: 68,
           },
-          tabBarActiveTintColor: colors.tabBarActive,
-          tabBarInactiveTintColor: colors.tabBarInactive,
-          tabBarLabelStyle: {
-            fontFamily: FONT_FAMILY.regular,
-            fontSize: 11,
-            marginBottom: 2,
-          },
+          tabBarActiveTintColor: colors.text,
+          tabBarInactiveTintColor: colors.textMuted,
+          tabBarLabelStyle: styles.tabLabel,
         }}
       >
         <Tab.Screen
           name="Секундомір"
           component={StopwatchScreen}
           options={{
-            tabBarIcon: ({ color }) => <TabIcon emoji="⏱" color={color} />,
+            tabBarIcon: ({ focused }) => <TabIcon emoji="⏱" focused={focused} />,
           }}
         />
         <Tab.Screen
           name="Таймер"
           component={TimerScreen}
           options={{
-            tabBarIcon: ({ color }) => <TabIcon emoji="⏳" color={color} />,
+            tabBarIcon: ({ focused }) => <TabIcon emoji="⏳" focused={focused} />,
           }}
         />
         <Tab.Screen
           name="Налаштування"
           component={SettingsScreen}
           options={{
-            tabBarIcon: ({ color }) => <TabIcon emoji="⚙️" color={color} />,
+            tabBarIcon: ({ focused }) => <TabIcon emoji="⚙️" focused={focused} />,
           }}
         />
       </Tab.Navigator>
     </NavigationContainer>
   );
 }
+
+const styles = StyleSheet.create({
+  pill: {
+    width: 56,
+    height: 28,
+    borderRadius: 999,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emoji: { fontSize: 20 },
+  tabLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    letterSpacing: 0.2,
+    marginBottom: 2,
+  },
+});

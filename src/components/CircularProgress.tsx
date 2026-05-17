@@ -82,7 +82,7 @@ export default function CircularProgress({
         {arcPath && (
           <Path
             d={arcPath}
-            stroke={colors.accent}
+            stroke={colors.start}
             strokeWidth={strokeWidth}
             fill="none"
             strokeLinecap="round"

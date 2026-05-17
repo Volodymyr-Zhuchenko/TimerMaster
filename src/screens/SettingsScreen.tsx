@@ -1,19 +1,3 @@
-// ============================================================
-// SettingsScreen — екран налаштувань.
-//
-// Секції:
-//   1. Зовнішній вигляд — Switch для перемикання темної/світлої теми
-//   2. Звукова тема    — вбудовані (без 🗑️) + кастомні (з 🗑️)
-//                        + кнопка "Додати звук (N / 5)"
-//   3. Про застосунок
-//
-// Логіка імпорту звуку:
-//   expo-document-picker → обирає MP3/WAV із пристрою
-//   expo-file-system.copyAsync → копіює у documentDirectory
-//   useSettings.addCustomSound → зберігає у AsyncStorage + Context
-//   useSettings.setSoundTheme  → одразу активує новий звук
-// ============================================================
-
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
@@ -33,34 +17,83 @@ import { SOUND_THEMES } from '@/constants/soundThemes';
 import { FONT_FAMILY } from '@/constants/fonts';
 import type { CustomSound } from '@/types';
 
+// ─── Section wrapper ──────────────────────────────────────
+
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  const { colors } = useTheme();
+  return (
+    <View style={styles.section}>
+      <Text style={[styles.sectionLabel, { color: colors.textMuted, fontFamily: FONT_FAMILY.regular }]}>
+        {title}
+      </Text>
+      <View style={{ height: 8 }} />
+      {children}
+    </View>
+  );
+}
+
+// ─── Row with icon, label, subtitle, trailing ─────────────
+
+function Row({
+  label,
+  sub,
+  trailing,
+  onPress,
+}: {
+  label: string;
+  sub?: string;
+  trailing?: React.ReactNode;
+  onPress?: () => void;
+}) {
+  const { colors } = useTheme();
+  const inner = (
+    <View style={styles.rowInner}>
+      <View style={styles.rowText}>
+        <Text style={[styles.rowLabel, { color: colors.text }]}>{label}</Text>
+        {sub && <Text style={[styles.rowSub, { color: colors.textMuted }]}>{sub}</Text>}
+      </View>
+      {trailing}
+    </View>
+  );
+  if (onPress) {
+    return (
+      <TouchableOpacity onPress={onPress} activeOpacity={0.7}>
+        {inner}
+      </TouchableOpacity>
+    );
+  }
+  return inner;
+}
+
+// ─── Divider ─────────────────────────────────────────────
+
+function Divider() {
+  const { colors } = useTheme();
+  return <View style={[styles.divider, { backgroundColor: colors.borderSoft }]} />;
+}
+
+// ─── Main screen ─────────────────────────────────────────
+
 export default function SettingsScreen() {
   const { colors, themeMode, toggleTheme } = useTheme();
-  const { soundTheme, setSoundTheme, customSounds, addCustomSound, removeCustomSound } =
-    useSettings();
+  const { soundTheme, setSoundTheme, customSounds, addCustomSound, removeCustomSound } = useSettings();
   const [importing, setImporting] = useState(false);
 
   async function handlePickSound() {
+    if (importing) return;
     try {
       setImporting(true);
-      const result = await DocumentPicker.getDocumentAsync({
-        type: 'audio/*',
-        copyToCacheDirectory: false,
-      });
+      const result = await DocumentPicker.getDocumentAsync({ type: 'audio/*', copyToCacheDirectory: false });
       if (result.canceled) return;
 
       const asset = result.assets[0];
       const id = Date.now().toString();
       const dest = `${FileSystem.documentDirectory}custom_sound_${id}.mp3`;
-
       await FileSystem.copyAsync({ from: asset.uri, to: dest });
 
-      const newSound: CustomSound = {
-        id,
-        name: asset.name ?? `Звук ${id}`,
-        uri: dest,
-      };
+      const newSound: CustomSound = { id, name: asset.name ?? `Звук ${id}`, uri: dest };
       addCustomSound(newSound);
-      setSoundTheme(id); // одразу активуємо
+      setSoundTheme(id);
     } catch (e) {
       console.warn('[SettingsScreen] import sound error:', e);
     } finally {
@@ -72,140 +105,150 @@ export default function SettingsScreen() {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+      {/* Header */}
+      <View style={styles.header}>
+        <Text style={[styles.headerSub, { color: colors.textMuted, fontFamily: FONT_FAMILY.regular }]}>
+          03 · Налаштування
+        </Text>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>Налаштування</Text>
+      </View>
+
       <ScrollView contentContainerStyle={styles.scroll}>
 
         {/* ── Зовнішній вигляд ── */}
-        <Text style={[styles.sectionTitle, { color: colors.textMuted, fontFamily: FONT_FAMILY.regular }]}>
-          Зовнішній вигляд
-        </Text>
-        <View style={[styles.row, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          <Text style={[styles.rowLabel, { color: colors.text, fontFamily: FONT_FAMILY.regular }]}>
-            Темна тема
-          </Text>
-          <Switch
-            value={themeMode === 'dark'}
-            onValueChange={toggleTheme}
-            trackColor={{ false: colors.border, true: colors.accent }}
-            thumbColor={colors.text}
-            ios_backgroundColor={colors.border}
-          />
-        </View>
-
-        {/* ── Звукова тема ── */}
-        <Text
-          style={[styles.sectionTitle, styles.sectionTop, { color: colors.textMuted, fontFamily: FONT_FAMILY.regular }]}
-        >
-          Звукова тема
-        </Text>
-
-        {/* Вбудовані теми (без кнопки видалення) */}
-        {SOUND_THEMES.map((theme) => {
-          const isActive = soundTheme === theme.key;
-          return (
-            <TouchableOpacity
-              key={theme.key}
-              onPress={() => setSoundTheme(theme.key)}
-              activeOpacity={0.7}
-              style={[
-                styles.row,
-                {
-                  backgroundColor: colors.surface,
-                  borderColor: isActive ? colors.accent : colors.border,
-                  borderWidth: isActive ? 1.5 : 1,
-                },
-              ]}
-            >
-              <View style={styles.rowContent}>
-                <Text style={[styles.rowLabel, { color: isActive ? colors.accent : colors.text, fontFamily: FONT_FAMILY.regular }]}>
-                  {theme.label}
-                </Text>
-                <Text style={[styles.rowDesc, { color: colors.textMuted, fontFamily: FONT_FAMILY.regular }]}>
-                  {theme.description}
-                </Text>
-              </View>
-              {isActive && <Text style={{ color: colors.accent, fontSize: 18 }}>✓</Text>}
-            </TouchableOpacity>
-          );
-        })}
-
-        {/* Кастомні звуки (з кнопкою 🗑️) */}
-        {customSounds.map((cs) => {
-          const isActive = soundTheme === cs.id;
-          return (
-            <View
-              key={cs.id}
-              style={[
-                styles.row,
-                {
-                  backgroundColor: colors.surface,
-                  borderColor: isActive ? colors.accent : colors.border,
-                  borderWidth: isActive ? 1.5 : 1,
-                },
-              ]}
-            >
-              {/* Ліва частина: натискаємо для вибору */}
+        <Section title="Зовнішній вигляд">
+          <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <View style={styles.themeGrid}>
+              {/* Темна */}
               <TouchableOpacity
-                style={styles.rowContent}
-                onPress={() => setSoundTheme(cs.id)}
+                onPress={() => themeMode !== 'dark' && toggleTheme()}
                 activeOpacity={0.7}
+                style={[
+                  styles.themeBtn,
+                  {
+                    backgroundColor: themeMode === 'dark' ? colors.surface3 : 'transparent',
+                    borderColor: themeMode === 'dark' ? colors.text : colors.borderSoft,
+                  },
+                ]}
               >
-                <Text style={[styles.rowLabel, { color: isActive ? colors.accent : colors.text, fontFamily: FONT_FAMILY.regular }]}
-                  numberOfLines={1}
-                >
-                  {cs.name}
-                </Text>
-                <Text style={[styles.rowDesc, { color: colors.textMuted, fontFamily: FONT_FAMILY.regular }]}>
-                  власний звук
-                </Text>
+                <Text style={{ fontSize: 20 }}>🌙</Text>
+                <Text style={[styles.themeBtnLabel, { color: colors.text }]}>Темна</Text>
               </TouchableOpacity>
-
-              {/* Права частина: галочка + видалення */}
-              <View style={styles.rowActions}>
-                {isActive && <Text style={{ color: colors.accent, fontSize: 16, marginRight: 8 }}>✓</Text>}
-                <TouchableOpacity onPress={() => removeCustomSound(cs.id)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                  <Text style={{ fontSize: 18 }}>🗑️</Text>
-                </TouchableOpacity>
-              </View>
+              {/* Світла */}
+              <TouchableOpacity
+                onPress={() => themeMode !== 'light' && toggleTheme()}
+                activeOpacity={0.7}
+                style={[
+                  styles.themeBtn,
+                  {
+                    backgroundColor: themeMode === 'light' ? colors.surface3 : 'transparent',
+                    borderColor: themeMode === 'light' ? colors.text : colors.borderSoft,
+                  },
+                ]}
+              >
+                <Text style={{ fontSize: 20 }}>☀️</Text>
+                <Text style={[styles.themeBtnLabel, { color: colors.text }]}>Світла</Text>
+              </TouchableOpacity>
             </View>
-          );
-        })}
+          </View>
+        </Section>
 
-        {/* Кнопка додавання звуку */}
-        <TouchableOpacity
-          onPress={handlePickSound}
-          activeOpacity={canAddMore ? 0.7 : 1}
-          style={[
-            styles.addBtn,
-            {
-              backgroundColor: colors.surface,
-              borderColor: colors.border,
-              opacity: importing ? 0.6 : 1,
-            },
-          ]}
-        >
-          {importing ? (
-            <ActivityIndicator color={colors.accent} />
-          ) : (
-            <Text style={[styles.addBtnLabel, { color: colors.accent, fontFamily: FONT_FAMILY.medium }]}>
-              {`+ Додати звук (${customSounds.length} / 5)`}
-            </Text>
-          )}
-        </TouchableOpacity>
+        {/* ── Звукове сповіщення ── */}
+        <Section title="Звукове сповіщення">
+          <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            {/* Built-in themes */}
+            {SOUND_THEMES.map((theme, i) => {
+              const isActive = soundTheme === theme.key;
+              return (
+                <TouchableOpacity
+                  key={theme.key}
+                  onPress={() => setSoundTheme(theme.key)}
+                  activeOpacity={0.7}
+                >
+                  <Row
+                    label={theme.label}
+                    sub={theme.description}
+                    trailing={
+                      <View style={[
+                        styles.radioCircle,
+                        {
+                          borderColor: isActive ? colors.start : colors.border,
+                          backgroundColor: isActive ? colors.start : 'transparent',
+                        },
+                      ]}>
+                        {isActive && <Text style={{ color: colors.startInk, fontSize: 10 }}>✓</Text>}
+                      </View>
+                    }
+                  />
+                  {i < SOUND_THEMES.length - 1 && <Divider />}
+                </TouchableOpacity>
+              );
+            })}
+
+            {/* Custom sounds */}
+            {customSounds.map((cs) => {
+              const isActive = soundTheme === cs.id;
+              return (
+                <View key={cs.id}>
+                  <Divider />
+                  <View style={styles.rowInner}>
+                    <TouchableOpacity
+                      style={styles.rowText}
+                      onPress={() => setSoundTheme(cs.id)}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={[styles.rowLabel, { color: colors.text }]} numberOfLines={1}>
+                        {cs.name}
+                      </Text>
+                      <Text style={[styles.rowSub, { color: colors.textMuted }]}>власний звук</Text>
+                    </TouchableOpacity>
+                    <View style={styles.rowActions}>
+                      {isActive && (
+                        <View style={[styles.radioCircle, { borderColor: colors.start, backgroundColor: colors.start }]}>
+                          <Text style={{ color: colors.startInk, fontSize: 10 }}>✓</Text>
+                        </View>
+                      )}
+                      <TouchableOpacity
+                        onPress={() => removeCustomSound(cs.id)}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        style={styles.deleteBtn}
+                      >
+                        <Text style={{ fontSize: 16 }}>🗑️</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                </View>
+              );
+            })}
+
+            {/* Add button */}
+            <Divider />
+            <TouchableOpacity
+              onPress={handlePickSound}
+              activeOpacity={canAddMore ? 0.7 : 1}
+              style={[styles.addBtn, { opacity: importing ? 0.6 : 1 }]}
+            >
+              {importing ? (
+                <ActivityIndicator color={colors.start} />
+              ) : (
+                <Text style={[styles.addBtnLabel, { color: colors.start, fontFamily: FONT_FAMILY.medium }]}>
+                  {`+ Додати звук (${customSounds.length} / 5)`}
+                </Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        </Section>
 
         {/* ── Про застосунок ── */}
-        <Text
-          style={[styles.sectionTitle, styles.sectionTop, { color: colors.textMuted, fontFamily: FONT_FAMILY.regular }]}
-        >
-          Про застосунок
+        <Section title="Інше">
+          <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <Row label="Про додаток" sub="TimeMaster v1.0 · Залікова робота" />
+          </View>
+        </Section>
+
+        <Text style={[styles.footer, { color: colors.textDim, fontFamily: FONT_FAMILY.regular }]}>
+          зроблено зі швидкістю 60 fps
         </Text>
-        <View style={[styles.row, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          <Text style={[styles.rowLabel, { color: colors.textMuted, fontFamily: FONT_FAMILY.regular }]}>
-            TimeMaster v1.0.0
-          </Text>
-          <Text style={[styles.rowDesc, { color: colors.textMuted, fontFamily: FONT_FAMILY.regular }]}>
-            Залікова робота
-          </Text>
-        </View>
 
       </ScrollView>
     </SafeAreaView>
@@ -214,40 +257,69 @@ export default function SettingsScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  scroll: { padding: 24, paddingBottom: 48 },
-  sectionTitle: {
-    fontSize: 11,
-    letterSpacing: 1.2,
-    textTransform: 'uppercase',
-    marginBottom: 10,
-  },
-  sectionTop: { marginTop: 28 },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 14,
-    borderRadius: 12,
+
+  header: { paddingHorizontal: 24, paddingTop: 16, paddingBottom: 12 },
+  headerSub: { fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 4 },
+  headerTitle: { fontSize: 24, fontWeight: '600', letterSpacing: -0.3 },
+
+  scroll: { paddingBottom: 48 },
+
+  section: { paddingHorizontal: 24, paddingTop: 12, paddingBottom: 8 },
+  sectionLabel: { fontSize: 10, letterSpacing: 2, textTransform: 'uppercase', fontWeight: '600' },
+
+  card: {
+    borderRadius: 20,
     borderWidth: 1,
-    marginBottom: 8,
+    overflow: 'hidden',
   },
-  rowContent: {
+
+  // Theme selector
+  themeGrid: { flexDirection: 'row', gap: 6, padding: 8 },
+  themeBtn: {
     flex: 1,
-    marginRight: 8,
+    paddingVertical: 12,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    alignItems: 'center',
+    gap: 6,
   },
-  rowLabel: { fontSize: 15 },
-  rowDesc: { fontSize: 12, marginTop: 2 },
-  rowActions: {
+  themeBtnLabel: { fontSize: 14, fontWeight: '500' },
+
+  // Row layout
+  rowInner: {
     flexDirection: 'row',
     alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    gap: 12,
   },
-  addBtn: {
-    borderRadius: 12,
-    borderWidth: 1,
-    padding: 14,
+  rowText: { flex: 1, minWidth: 0 },
+  rowLabel: { fontSize: 15, fontWeight: '500' },
+  rowSub: { fontSize: 12, marginTop: 2 },
+  rowActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+
+  divider: { height: 1, marginLeft: 16 },
+
+  radioCircle: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 1.6,
     alignItems: 'center',
-    marginTop: 4,
-    marginBottom: 8,
+    justifyContent: 'center',
+    flexShrink: 0,
   },
+
+  deleteBtn: { padding: 2 },
+
+  addBtn: { padding: 14, alignItems: 'center' },
   addBtnLabel: { fontSize: 15 },
+
+  footer: {
+    textAlign: 'center',
+    padding: 24,
+    fontSize: 10,
+    letterSpacing: 2,
+    textTransform: 'uppercase',
+  },
 });

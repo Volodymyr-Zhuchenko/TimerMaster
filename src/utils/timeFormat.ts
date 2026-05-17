@@ -1,42 +1,40 @@
-// ============================================================
-// Чисті функції форматування часу — без залежностей від React.
-// Використовуються у компонентах TimeDisplay та LapItem.
-// ============================================================
-
-/** Доповнює число нулями до 2 символів: 5 → "05" */
 function pad2(n: number): string {
   return String(Math.floor(n)).padStart(2, '0');
 }
 
-/** Доповнює число нулями до 3 символів: 45 → "045" */
-function pad3(n: number): string {
-  return String(Math.floor(n)).padStart(3, '0');
-}
-
 /**
- * Форматує мілісекунди у рядок "ГГ:ХХ:СС.ммм".
- * Використовується у секундомірі, де важлива точність до мс.
- *
- * @example formatMs(89045) → "00:01:29.045"
+ * Splits elapsed ms into main "MM:SS" and cents "cc" (hundredths).
+ * Used for the large stopwatch display (big number + smaller cents).
  */
-export function formatMs(totalMs: number): string {
-  const ms = totalMs % 1000;
+export function formatMsDisplay(totalMs: number): { main: string; cents: string } {
   const totalSec = Math.floor(totalMs / 1000);
+  const cs = Math.floor((totalMs % 1000) / 10);
   const s = totalSec % 60;
   const m = Math.floor(totalSec / 60) % 60;
   const h = Math.floor(totalSec / 3600);
-  return `${pad2(h)}:${pad2(m)}:${pad2(s)}.${pad3(ms)}`;
+  const main = h > 0 ? `${h}:${pad2(m)}:${pad2(s)}` : `${pad2(m)}:${pad2(s)}`;
+  return { main, cents: pad2(cs) };
 }
 
 /**
- * Форматує секунди у рядок "ГГ:ХХ:СС" (без мілісекунд).
- * Використовується у таймері зворотного відліку.
- *
- * @example formatSeconds(90) → "00:01:30"
+ * Formats ms as "MM:SS.cc" — used in lap rows and the current-lap pill.
+ */
+export function formatMsLap(totalMs: number): string {
+  const { main, cents } = formatMsDisplay(totalMs);
+  return `${main}.${cents}`;
+}
+
+/**
+ * Formats seconds as "HH:MM:SS" — used in the countdown timer.
  */
 export function formatSeconds(totalSec: number): string {
   const s = Math.floor(totalSec) % 60;
   const m = Math.floor(totalSec / 60) % 60;
   const h = Math.floor(totalSec / 3600);
   return `${pad2(h)}:${pad2(m)}:${pad2(s)}`;
+}
+
+/** Legacy full-precision format kept for compatibility. */
+export function formatMs(totalMs: number): string {
+  return formatMsLap(totalMs);
 }
