@@ -109,7 +109,7 @@ export default function StopwatchScreen() {
 
       {/* ── Button row ── */}
       <View style={[styles.btnRow, { borderTopColor: colors.borderSoft }]}>
-        <View style={styles.btnSide}>
+        <View style={[styles.btnSide, { alignItems: 'flex-end' }]}>
           <SideButton
             label="Скидання"
             onPress={reset}
@@ -120,7 +120,7 @@ export default function StopwatchScreen() {
           running={isRunning}
           onPress={isRunning ? pause : start}
         />
-        <View style={styles.btnSide}>
+        <View style={[styles.btnSide, { alignItems: 'flex-start' }]}>
           <SideButton
             label="Коло"
             onPress={lap}
@@ -193,5 +193,5 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     gap: 12,
   },
-  btnSide: { flex: 1, alignItems: 'flex-end' },
+  btnSide: { flex: 1 },
 });

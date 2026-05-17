@@ -101,8 +101,8 @@ export default function TimerScreen() {
   } = useCountdown();
 
   const [pickerH, setPickerH] = useState(0);
-  const [pickerM, setPickerM] = useState(4);
-  const [pickerS, setPickerS] = useState(30);
+  const [pickerM, setPickerM] = useState(0);
+  const [pickerS, setPickerS] = useState(0);
 
   const isIdle = !isRunning && remainingMs === totalSeconds * 1000 && !isFinished;
   const ready = pickerH + pickerM + pickerS > 0;
@@ -192,7 +192,7 @@ export default function TimerScreen() {
 
           {/* Buttons */}
           <View style={[styles.btnRow, { borderTopColor: colors.borderSoft }]}>
-            <View style={styles.btnSide}>
+            <View style={[styles.btnSide, { alignItems: 'flex-end' }]}>
               <SideButton
                 label="Очистити"
                 onPress={() => { setPickerH(0); setPickerM(0); setPickerS(0); }}
@@ -235,7 +235,7 @@ export default function TimerScreen() {
 
           {/* Buttons */}
           <View style={[styles.btnRow, { borderTopColor: colors.borderSoft }]}>
-            <View style={styles.btnSide}>
+            <View style={[styles.btnSide, { alignItems: 'flex-end' }]}>
               <SideButton label="Скидання" onPress={reset} />
             </View>
             {isFinished ? (
@@ -352,5 +352,5 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     gap: 12,
   },
-  btnSide: { flex: 1, alignItems: 'flex-end' },
+  btnSide: { flex: 1 },
 });
