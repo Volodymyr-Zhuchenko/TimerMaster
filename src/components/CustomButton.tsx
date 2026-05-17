@@ -152,13 +152,14 @@ const styles = StyleSheet.create({
     elevation: 10,
   },
   side: {
-    width: 124,
     height: 56,
     borderRadius: 999,
     borderWidth: 1,
     backgroundColor: 'transparent',
     alignItems: 'center',
     justifyContent: 'center',
+    alignSelf: 'stretch',
+    paddingHorizontal: 12,
   },
   sideLabel: {
     fontSize: 13,
