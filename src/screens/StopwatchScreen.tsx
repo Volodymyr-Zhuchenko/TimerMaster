@@ -30,7 +30,6 @@ export default function StopwatchScreen() {
     <SafeAreaView edges={['top']} style={[styles.container, { backgroundColor: colors.background }]}>
       {/* ── Header ── */}
       <ScreenHeader
-        subtitle="01 · Секундомір"
         title="Секундомір"
         right={
           <View style={styles.statusRow}>

@@ -47,7 +47,7 @@ export default function RootNavigator() {
           name="Секундомір"
           component={StopwatchScreen}
           options={{
-            tabBarIcon: ({ focused }) => <TabIcon emoji="⏱" focused={focused} />,
+            tabBarIcon: ({ focused }) => <TabIcon emoji="⏰" focused={focused} />,
           }}
         />
         <Tab.Screen

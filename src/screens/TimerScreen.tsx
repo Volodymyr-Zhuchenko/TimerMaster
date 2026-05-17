@@ -134,7 +134,6 @@ export default function TimerScreen() {
     <SafeAreaView edges={['top']} style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
       <ScreenHeader
-        subtitle="02 · Таймер"
         title="Таймер"
         right={
           <Text style={[styles.headerStatus, {

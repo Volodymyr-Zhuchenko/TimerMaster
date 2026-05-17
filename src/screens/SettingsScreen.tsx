@@ -107,9 +107,6 @@ export default function SettingsScreen() {
     <SafeAreaView edges={['top']} style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={[styles.headerSub, { color: colors.textMuted, fontFamily: FONT_FAMILY.regular }]}>
-          03 · Налаштування
-        </Text>
         <Text style={[styles.headerTitle, { color: colors.text }]}>Налаштування</Text>
       </View>
 
@@ -259,7 +256,6 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
 
   header: { paddingHorizontal: 24, paddingTop: 16, paddingBottom: 12 },
-  headerSub: { fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 4 },
   headerTitle: { fontSize: 24, fontWeight: '600', letterSpacing: -0.3 },
 
   scroll: { paddingBottom: 48 },

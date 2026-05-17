@@ -4,7 +4,7 @@ import { useTheme } from '@/hooks/useTheme';
 import { FONT_FAMILY } from '@/constants/fonts';
 
 interface Props {
-  subtitle: string;
+  subtitle?: string;
   title: string;
   right?: React.ReactNode;
 }
@@ -14,9 +14,11 @@ export default function ScreenHeader({ subtitle, title, right }: Props) {
   return (
     <View style={styles.header}>
       <View>
-        <Text style={[styles.subtitle, { color: colors.textMuted, fontFamily: FONT_FAMILY.regular }]}>
-          {subtitle}
-        </Text>
+        {subtitle && (
+          <Text style={[styles.subtitle, { color: colors.textMuted, fontFamily: FONT_FAMILY.regular }]}>
+            {subtitle}
+          </Text>
+        )}
         <Text style={[styles.title, { color: colors.text }]}>{title}</Text>
       </View>
       {right}
