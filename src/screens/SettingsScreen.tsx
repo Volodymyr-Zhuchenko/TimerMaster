@@ -13,6 +13,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system';
 import { useTheme } from '@/hooks/useTheme';
 import { useSettings } from '@/hooks/useSettings';
+import { DARK_THEME, LIGHT_THEME } from '@/constants/colors';
 import { SOUND_THEMES } from '@/constants/soundThemes';
 import { FONT_FAMILY } from '@/constants/fonts';
 import type { CustomSound } from '@/types';
@@ -72,10 +73,66 @@ function Divider() {
   return <View style={[styles.divider, { backgroundColor: colors.borderSoft }]} />;
 }
 
+// ─── Theme preview card ───────────────────────────────────
+
+function ThemeCard({
+  mode,
+  label,
+  icon,
+  isActive,
+  onPress,
+}: {
+  mode: 'light' | 'dark';
+  label: string;
+  icon: string;
+  isActive: boolean;
+  onPress: () => void;
+}) {
+  const { colors } = useTheme();
+  const c = mode === 'dark' ? DARK_THEME : LIGHT_THEME;
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      activeOpacity={0.8}
+      style={[
+        styles.themeCard,
+        {
+          backgroundColor: c.background,
+          borderColor: isActive ? colors.text : colors.borderSoft,
+          borderWidth: isActive ? 2 : 1,
+        },
+      ]}
+    >
+      <View style={[styles.themeCardPreview, { backgroundColor: c.background }]}>
+        <View style={[styles.themeCardBar, { backgroundColor: c.surface2 }]} />
+        <Text style={[styles.themeCardTime, { color: c.text, fontFamily: FONT_FAMILY.light }]}>
+          02:31
+        </Text>
+        <View style={styles.themeCardDots}>
+          <View style={[styles.themeDot, { backgroundColor: '#5BE584' }]} />
+          <View style={[styles.themeDot, { backgroundColor: '#FF6B6B' }]} />
+          <View style={[styles.themeDot, { backgroundColor: '#6E9BFF' }]} />
+        </View>
+      </View>
+      <View style={[styles.themeCardFooter, { borderTopColor: c.border, backgroundColor: c.surface }]}>
+        <Text style={{ fontSize: 15 }}>{icon}</Text>
+        <Text style={[styles.themeCardFooterText, { color: c.text, fontFamily: FONT_FAMILY.medium }]}>
+          {label}
+        </Text>
+        {isActive && (
+          <View style={[styles.themeCardCheck, { backgroundColor: colors.start }]}>
+            <Text style={{ color: colors.startInk, fontSize: 10 }}>✓</Text>
+          </View>
+        )}
+      </View>
+    </TouchableOpacity>
+  );
+}
+
 // ─── Main screen ─────────────────────────────────────────
 
 export default function SettingsScreen() {
-  const { colors, themeMode, toggleTheme } = useTheme();
+  const { colors, themeMode, resolvedMode, setThemeMode } = useTheme();
   const { soundTheme, setSoundTheme, customSounds, addCustomSound, removeCustomSound } = useSettings();
   const [importing, setImporting] = useState(false);
 
@@ -114,39 +171,36 @@ export default function SettingsScreen() {
 
         {/* ── Зовнішній вигляд ── */}
         <Section title="Зовнішній вигляд">
-          <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <View style={styles.themeGrid}>
-              {/* Темна */}
-              <TouchableOpacity
-                onPress={() => themeMode !== 'dark' && toggleTheme()}
-                activeOpacity={0.7}
-                style={[
-                  styles.themeBtn,
-                  {
-                    backgroundColor: themeMode === 'dark' ? colors.surface3 : 'transparent',
-                    borderColor: themeMode === 'dark' ? colors.text : colors.borderSoft,
-                  },
-                ]}
-              >
-                <Text style={{ fontSize: 20 }}>🌙</Text>
-                <Text style={[styles.themeBtnLabel, { color: colors.text }]}>Темна</Text>
-              </TouchableOpacity>
-              {/* Світла */}
-              <TouchableOpacity
-                onPress={() => themeMode !== 'light' && toggleTheme()}
-                activeOpacity={0.7}
-                style={[
-                  styles.themeBtn,
-                  {
-                    backgroundColor: themeMode === 'light' ? colors.surface3 : 'transparent',
-                    borderColor: themeMode === 'light' ? colors.text : colors.borderSoft,
-                  },
-                ]}
-              >
-                <Text style={{ fontSize: 20 }}>☀️</Text>
-                <Text style={[styles.themeBtnLabel, { color: colors.text }]}>Світла</Text>
-              </TouchableOpacity>
+          <View style={styles.themeCardsRow}>
+            <ThemeCard
+              mode="light"
+              label="Світла"
+              icon="☀️"
+              isActive={themeMode === 'light'}
+              onPress={() => setThemeMode('light')}
+            />
+            <ThemeCard
+              mode="dark"
+              label="Темна"
+              icon="🌙"
+              isActive={themeMode === 'dark'}
+              onPress={() => setThemeMode('dark')}
+            />
+          </View>
+          <View style={[styles.systemRow, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <View style={styles.systemIconBadge}>
+              <Text style={{ fontSize: 18 }}>☀️</Text>
             </View>
+            <Text style={[styles.systemRowLabel, { color: colors.text }]}>
+              Автоматично за системою
+            </Text>
+            <Switch
+              value={themeMode === 'system'}
+              onValueChange={(v) => setThemeMode(v ? 'system' : resolvedMode)}
+              trackColor={{ false: colors.borderSoft, true: colors.start }}
+              thumbColor="#FFFFFF"
+              ios_backgroundColor={colors.borderSoft}
+            />
           </View>
         </Section>
 
@@ -270,16 +324,48 @@ const styles = StyleSheet.create({
   },
 
   // Theme selector
-  themeGrid: { flexDirection: 'row', gap: 6, padding: 8 },
-  themeBtn: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 14,
-    borderWidth: 1.5,
+  themeCardsRow: { flexDirection: 'row', gap: 10 },
+  themeCard: { flex: 1, borderRadius: 16, overflow: 'hidden' },
+  themeCardPreview: { padding: 14, paddingBottom: 10, alignItems: 'center', gap: 8 },
+  themeCardBar: { height: 6, width: '65%', borderRadius: 999 },
+  themeCardTime: { fontSize: 20, letterSpacing: -0.5 },
+  themeCardDots: { flexDirection: 'row', gap: 6 },
+  themeDot: { width: 13, height: 13, borderRadius: 7 },
+  themeCardFooter: {
+    flexDirection: 'row',
     alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 10,
+    borderTopWidth: 1,
     gap: 6,
   },
-  themeBtnLabel: { fontSize: 14, fontWeight: '500' },
+  themeCardFooterText: { flex: 1, fontSize: 13, fontWeight: '500' },
+  themeCardCheck: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  systemRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 10,
+    borderRadius: 16,
+    borderWidth: 1,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    gap: 12,
+  },
+  systemIconBadge: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: '#F4A228',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  systemRowLabel: { flex: 1, fontSize: 15, fontWeight: '500' },
 
   // Row layout
   rowInner: {
