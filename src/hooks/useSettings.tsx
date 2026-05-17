@@ -1,15 +1,3 @@
-// ============================================================
-// useSettings — Context для налаштувань застосунку.
-//
-// Керує:
-//   soundTheme   — ID активної теми ('classic'/'digital' або UUID)
-//   customSounds — масив до 5 імпортованих користувачем звуків
-//
-// addCustomSound: якщо вже є 5 звуків — показує Alert, нічого не додає.
-// removeCustomSound: видаляє файл із FileSystem і з масиву;
-//   якщо видалений звук був активним — перемикає на 'classic'.
-// ============================================================
-
 import React, {
   createContext,
   useCallback,
@@ -21,7 +9,7 @@ import { Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as FileSystem from 'expo-file-system';
 import { STORAGE_KEYS } from '@/constants/storage';
-import type { CustomSound, SoundTheme } from '@/types';
+import type { CustomSound, SoundTheme, VibrationMode } from '@/types';
 
 const MAX_CUSTOM_SOUNDS = 5;
 
@@ -31,26 +19,39 @@ interface SettingsContextValue {
   customSounds: CustomSound[];
   addCustomSound: (sound: CustomSound) => void;
   removeCustomSound: (id: string) => void;
+  vibration: VibrationMode;
+  setVibration: (mode: VibrationMode) => void;
 }
 
 const SettingsContext = createContext<SettingsContextValue>({
-  soundTheme: 'classic',
+  soundTheme: 'default',
   setSoundTheme: () => {},
   customSounds: [],
   addCustomSound: () => {},
   removeCustomSound: () => {},
+  vibration: 'off',
+  setVibration: () => {},
 });
 
 export function SettingsProvider({ children }: { children: React.ReactNode }) {
-  const [soundTheme, setSoundThemeState] = useState<SoundTheme>('classic');
+  const [soundTheme, setSoundThemeState] = useState<SoundTheme>('default');
   const [customSounds, setCustomSoundsState] = useState<CustomSound[]>([]);
+  const [vibration, setVibrationState] = useState<VibrationMode>('off');
 
-  // Відновлення звукових налаштувань із AsyncStorage
   useEffect(() => {
-    AsyncStorage.multiGet([STORAGE_KEYS.SOUND_THEME, STORAGE_KEYS.CUSTOM_SOUNDS])
-      .then(([themeEntry, soundsEntry]) => {
+    AsyncStorage.multiGet([
+      STORAGE_KEYS.SOUND_THEME,
+      STORAGE_KEYS.CUSTOM_SOUNDS,
+      STORAGE_KEYS.VIBRATION,
+    ])
+      .then(([themeEntry, soundsEntry, vibrationEntry]) => {
         const theme = themeEntry[1];
-        if (theme) setSoundThemeState(theme);
+        // Мігруємо старі значення 'classic'/'digital' → 'default'
+        if (theme === 'classic' || theme === 'digital' || theme === 'default') {
+          setSoundThemeState('default');
+        } else if (theme) {
+          setSoundThemeState(theme);
+        }
 
         const soundsJson = soundsEntry[1];
         if (soundsJson) {
@@ -59,6 +60,9 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
             if (Array.isArray(parsed)) setCustomSoundsState(parsed);
           } catch { /* пошкоджені дані — порожній стан */ }
         }
+
+        const vib = vibrationEntry[1];
+        if (vib === 'off' || vib === 'pulse') setVibrationState(vib);
       })
       .catch(() => {});
   }, []);
@@ -66,6 +70,11 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
   const setSoundTheme = useCallback((theme: SoundTheme) => {
     setSoundThemeState(theme);
     AsyncStorage.setItem(STORAGE_KEYS.SOUND_THEME, theme).catch(() => {});
+  }, []);
+
+  const setVibration = useCallback((mode: VibrationMode) => {
+    setVibrationState(mode);
+    AsyncStorage.setItem(STORAGE_KEYS.VIBRATION, mode).catch(() => {});
   }, []);
 
   const addCustomSound = useCallback(
@@ -90,17 +99,15 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
       const sound = customSounds.find((s) => s.id === id);
       if (!sound) return;
 
-      // Видаляємо файл із файлової системи
       FileSystem.deleteAsync(sound.uri, { idempotent: true }).catch(() => {});
 
       const updated = customSounds.filter((s) => s.id !== id);
       setCustomSoundsState(updated);
       AsyncStorage.setItem(STORAGE_KEYS.CUSTOM_SOUNDS, JSON.stringify(updated)).catch(() => {});
 
-      // Якщо видалений звук був активним — повертаємось до 'classic'
       if (soundTheme === id) {
-        setSoundThemeState('classic');
-        AsyncStorage.setItem(STORAGE_KEYS.SOUND_THEME, 'classic').catch(() => {});
+        setSoundThemeState('default');
+        AsyncStorage.setItem(STORAGE_KEYS.SOUND_THEME, 'default').catch(() => {});
       }
     },
     [customSounds, soundTheme],
@@ -108,7 +115,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <SettingsContext.Provider
-      value={{ soundTheme, setSoundTheme, customSounds, addCustomSound, removeCustomSound }}
+      value={{ soundTheme, setSoundTheme, customSounds, addCustomSound, removeCustomSound, vibration, setVibration }}
     >
       {children}
     </SettingsContext.Provider>

@@ -20,7 +20,8 @@
     },
     "plugins": [
       "expo-av",
-      "expo-font"
+      "expo-font",
+      "expo-audio"
     ]
   }
 }

@@ -8,4 +8,6 @@ export const STORAGE_KEYS = {
   TIMER_DURATION: 'timemaster:timer:duration',
   /** JSON-рядок масиву CustomSound[] (до 5 елементів) */
   CUSTOM_SOUNDS: 'timemaster:custom:sounds',
+  /** 'off' | 'pulse' */
+  VIBRATION: 'timemaster:vibration',
 } as const;

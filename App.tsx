@@ -23,9 +23,14 @@ import {
   IBMPlexMono_400Regular,
   IBMPlexMono_500Medium,
 } from '@expo-google-fonts/ibm-plex-mono';
-import { ThemeProvider } from '@/hooks/useTheme';
+import { ThemeProvider, useTheme } from '@/hooks/useTheme';
 import { SettingsProvider } from '@/hooks/useSettings';
 import RootNavigator from '@/navigation/RootNavigator';
+
+function ThemedStatusBar() {
+  const { resolvedMode } = useTheme();
+  return <StatusBar style={resolvedMode === 'light' ? 'dark' : 'light'} />;
+}
 
 export default function App() {
   const [fontsLoaded] = useFonts({
@@ -43,7 +48,7 @@ export default function App() {
       <ThemeProvider>
         <SettingsProvider>
           <RootNavigator />
-          <StatusBar style="auto" />
+          <ThemedStatusBar />
         </SettingsProvider>
       </ThemeProvider>
     </SafeAreaProvider>

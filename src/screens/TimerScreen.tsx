@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
+  Alert,
   ScrollView,
   StyleSheet,
   Text,
@@ -7,11 +8,13 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useIsFocused } from '@react-navigation/native';
 import { useCountdown } from '@/hooks/useCountdown';
 import { useTheme } from '@/hooks/useTheme';
 import ScreenHeader from '@/components/ScreenHeader';
 import TickDial from '@/components/TickDial';
 import { FabButton, SideButton } from '@/components/CustomButton';
+import { stopLoopingAlert } from '@/utils/audioHelper';
 import { FONT_FAMILY } from '@/constants/fonts';
 
 // ─── Wheel column (above / selected / below) ─────────────
@@ -43,14 +46,14 @@ function Wheel({
         onPress={() => onChange(above)}
         activeOpacity={0.6}
       >
-        <Text style={[styles.wheelDim, { color: colors.textDim, fontFamily: FONT_FAMILY.light }]}>
+        <Text style={[styles.wheelDim, { color: colors.textDim }]}>
           {d(above)}
         </Text>
       </TouchableOpacity>
 
       {/* Selected */}
       <View style={styles.wheelSelected}>
-        <Text style={[styles.wheelValue, { color: colors.text, fontFamily: FONT_FAMILY.light }]}>
+        <Text style={[styles.wheelValue, { color: colors.text }]}>
           {d(value)}
         </Text>
       </View>
@@ -61,7 +64,7 @@ function Wheel({
         onPress={() => onChange(below)}
         activeOpacity={0.6}
       >
-        <Text style={[styles.wheelDim, { color: colors.textDim, fontFamily: FONT_FAMILY.light }]}>
+        <Text style={[styles.wheelDim, { color: colors.textDim }]}>
           {d(below)}
         </Text>
       </TouchableOpacity>
@@ -100,9 +103,24 @@ export default function TimerScreen() {
     reset,
   } = useCountdown();
 
+  const isFocused = useIsFocused();
+
   const [pickerH, setPickerH] = useState(0);
   const [pickerM, setPickerM] = useState(0);
   const [pickerS, setPickerS] = useState(0);
+
+  // Popup лише якщо таймер закінчився саме поки цей екран активний
+  useEffect(() => {
+    if (isFinished && isFocused) {
+      Alert.alert(
+        'Час закінчився',
+        '',
+        [{ text: 'OK', onPress: () => { stopLoopingAlert(); reset(); } }],
+        { cancelable: false },
+      );
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isFinished]);
 
   const isIdle = !isRunning && remainingMs === totalSeconds * 1000 && !isFinished;
   const ready = pickerH + pickerM + pickerS > 0;
@@ -151,9 +169,9 @@ export default function TimerScreen() {
           {/* Wheel row */}
           <View style={styles.wheelRow}>
             <Wheel label="Год" value={pickerH} max={23} onChange={setPickerH} />
-            <Text style={[styles.colon, { color: colors.textDim, fontFamily: FONT_FAMILY.light }]}>:</Text>
+            <Text style={[styles.colon, { color: colors.textDim }]}>:</Text>
             <Wheel label="Хв" value={pickerM} max={59} onChange={setPickerM} />
-            <Text style={[styles.colon, { color: colors.textDim, fontFamily: FONT_FAMILY.light }]}>:</Text>
+            <Text style={[styles.colon, { color: colors.textDim }]}>:</Text>
             <Wheel label="Сек" value={pickerS} max={59} onChange={setPickerS} />
           </View>
 
@@ -211,7 +229,7 @@ export default function TimerScreen() {
                 <Text style={[styles.dialHint, { color: colors.textMuted, fontFamily: FONT_FAMILY.regular }]}>
                   Залишилось
                 </Text>
-                <Text style={[styles.dialTime, { color: isFinished ? colors.start : colors.text, fontFamily: FONT_FAMILY.light }]}>
+                <Text style={[styles.dialTime, { color: isFinished ? colors.start : colors.text }]}>
                   {isFinished ? 'Час вийшов!' : displayTime}
                 </Text>
                 {!isFinished && (
@@ -288,14 +306,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     width: '100%',
   },
-  wheelDim: { fontSize: 22, fontWeight: '300' },
+  wheelDim: { fontSize: 22, fontWeight: '300', fontVariant: ['tabular-nums'] },
   wheelSelected: {
     height: 64,
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 1,
   },
-  wheelValue: { fontSize: 44, letterSpacing: -1 },
+  wheelValue: { fontSize: 44, letterSpacing: -1, fontVariant: ['tabular-nums'] },
   wheelLabel: {
     fontSize: 10,
     letterSpacing: 2,
@@ -329,7 +347,7 @@ const styles = StyleSheet.create({
   },
   dialCenter: { alignItems: 'center', gap: 6 },
   dialHint: { fontSize: 10, letterSpacing: 2, textTransform: 'uppercase' },
-  dialTime: { fontSize: 52, fontWeight: '200', letterSpacing: -2, lineHeight: 56 },
+  dialTime: { fontSize: 52, fontWeight: '200', letterSpacing: -2, lineHeight: 56, fontVariant: ['tabular-nums'] },
   dialPct: { fontSize: 12, letterSpacing: 1, marginTop: 4 },
   alertPill: {
     flexDirection: 'row',

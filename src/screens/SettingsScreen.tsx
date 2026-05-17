@@ -14,7 +14,6 @@ import * as FileSystem from 'expo-file-system';
 import { useTheme } from '@/hooks/useTheme';
 import { useSettings } from '@/hooks/useSettings';
 import { DARK_THEME, LIGHT_THEME } from '@/constants/colors';
-import { SOUND_THEMES } from '@/constants/soundThemes';
 import { FONT_FAMILY } from '@/constants/fonts';
 import type { CustomSound } from '@/types';
 
@@ -133,14 +132,14 @@ function ThemeCard({
 
 export default function SettingsScreen() {
   const { colors, themeMode, resolvedMode, setThemeMode } = useTheme();
-  const { soundTheme, setSoundTheme, customSounds, addCustomSound, removeCustomSound } = useSettings();
+  const { soundTheme, setSoundTheme, customSounds, addCustomSound, removeCustomSound, vibration, setVibration } = useSettings();
   const [importing, setImporting] = useState(false);
 
   async function handlePickSound() {
     if (importing) return;
     try {
       setImporting(true);
-      const result = await DocumentPicker.getDocumentAsync({ type: 'audio/*', copyToCacheDirectory: false });
+      const result = await DocumentPicker.getDocumentAsync({ type: 'audio/*', copyToCacheDirectory: true });
       if (result.canceled) return;
 
       const asset = result.assets[0];
@@ -157,8 +156,6 @@ export default function SettingsScreen() {
       setImporting(false);
     }
   }
-
-  const canAddMore = customSounds.length < 5;
 
   return (
     <SafeAreaView edges={['top']} style={[styles.container, { backgroundColor: colors.background }]}>
@@ -207,36 +204,22 @@ export default function SettingsScreen() {
         {/* ── Звукове сповіщення ── */}
         <Section title="Звукове сповіщення">
           <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            {/* Built-in themes */}
-            {SOUND_THEMES.map((theme, i) => {
-              const isActive = soundTheme === theme.key;
-              return (
-                <TouchableOpacity
-                  key={theme.key}
-                  onPress={() => setSoundTheme(theme.key)}
-                  activeOpacity={0.7}
-                >
-                  <Row
-                    label={theme.label}
-                    sub={theme.description}
-                    trailing={
-                      <View style={[
-                        styles.radioCircle,
-                        {
-                          borderColor: isActive ? colors.start : colors.border,
-                          backgroundColor: isActive ? colors.start : 'transparent',
-                        },
-                      ]}>
-                        {isActive && <Text style={{ color: colors.startInk, fontSize: 10 }}>✓</Text>}
-                      </View>
-                    }
-                  />
-                  {i < SOUND_THEMES.length - 1 && <Divider />}
-                </TouchableOpacity>
-              );
-            })}
+            {/* Дефолтний звук */}
+            <TouchableOpacity onPress={() => setSoundTheme('default')} activeOpacity={0.7}>
+              <Row
+                label="Звук за замовчуванням"
+                trailing={
+                  <View style={[styles.radioCircle, {
+                    borderColor: soundTheme === 'default' ? colors.start : colors.border,
+                    backgroundColor: soundTheme === 'default' ? colors.start : 'transparent',
+                  }]}>
+                    {soundTheme === 'default' && <Text style={{ color: colors.startInk, fontSize: 10 }}>✓</Text>}
+                  </View>
+                }
+              />
+            </TouchableOpacity>
 
-            {/* Custom sounds */}
+            {/* Кастомні звуки */}
             {customSounds.map((cs) => {
               const isActive = soundTheme === cs.id;
               return (
@@ -272,11 +255,11 @@ export default function SettingsScreen() {
               );
             })}
 
-            {/* Add button */}
+            {/* Кнопка додавання */}
             <Divider />
             <TouchableOpacity
               onPress={handlePickSound}
-              activeOpacity={canAddMore ? 0.7 : 1}
+              activeOpacity={0.7}
               style={[styles.addBtn, { opacity: importing ? 0.6 : 1 }]}
             >
               {importing ? (
@@ -286,6 +269,39 @@ export default function SettingsScreen() {
                   {`+ Додати звук (${customSounds.length} / 5)`}
                 </Text>
               )}
+            </TouchableOpacity>
+          </View>
+        </Section>
+
+        {/* ── Вібрація ── */}
+        <Section title="Вібрація">
+          <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <TouchableOpacity onPress={() => setVibration('off')} activeOpacity={0.7}>
+              <Row
+                label="Вимкнено"
+                trailing={
+                  <View style={[styles.radioCircle, {
+                    borderColor: vibration === 'off' ? colors.start : colors.border,
+                    backgroundColor: vibration === 'off' ? colors.start : 'transparent',
+                  }]}>
+                    {vibration === 'off' && <Text style={{ color: colors.startInk, fontSize: 10 }}>✓</Text>}
+                  </View>
+                }
+              />
+            </TouchableOpacity>
+            <Divider />
+            <TouchableOpacity onPress={() => setVibration('pulse')} activeOpacity={0.7}>
+              <Row
+                label="Серія імпульсів"
+                trailing={
+                  <View style={[styles.radioCircle, {
+                    borderColor: vibration === 'pulse' ? colors.start : colors.border,
+                    backgroundColor: vibration === 'pulse' ? colors.start : 'transparent',
+                  }]}>
+                    {vibration === 'pulse' && <Text style={{ color: colors.startInk, fontSize: 10 }}>✓</Text>}
+                  </View>
+                }
+              />
             </TouchableOpacity>
           </View>
         </Section>

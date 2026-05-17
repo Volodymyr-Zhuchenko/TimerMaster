@@ -1,20 +1,10 @@
-// ============================================================
-// useCountdown — логіка таймера зворотного відліку.
-//
-// Вибір джерела звуку при кожній зміні soundTheme або customSounds:
-//   soundTheme є 'classic'/'digital' → вбудований assetPath + власна вібрація
-//   soundTheme є UUID кастомного     → URI з customSounds + вібрація 'classic'
-//
-// Точність: endTimeRef = Date.now() + remainingMs (drift виключено).
-// Cleanup: clearInterval + unloadSound() при розмонтуванні.
-// ============================================================
-
 import { useCallback, useEffect, useRef, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { STORAGE_KEYS } from '@/constants/storage';
-import { SOUND_THEMES } from '@/constants/soundThemes';
-import { loadSound, playSound, unloadSound } from '@/utils/audioHelper';
+import { DEFAULT_SOUND_ASSET } from '@/constants/soundThemes';
+import { loadSound, startLoopingAlert, stopLoopingAlert, unloadSound } from '@/utils/audioHelper';
 import { useSettings } from '@/hooks/useSettings';
+import type { VibrationMode } from '@/types';
 
 export interface UseCountdownReturn {
   totalSeconds: number;
@@ -23,14 +13,13 @@ export interface UseCountdownReturn {
   isFinished: boolean;
   setDuration: (seconds: number) => void;
   start: () => void;
-  /** Sets duration and starts immediately — avoids async-state race. */
   startWithDuration: (seconds: number) => void;
   pause: () => void;
   reset: () => void;
 }
 
 export function useCountdown(): UseCountdownReturn {
-  const { soundTheme, customSounds } = useSettings();
+  const { soundTheme, customSounds, vibration } = useSettings();
   const [totalSeconds, setTotalSeconds] = useState(0);
   const [remainingMs, setRemainingMs] = useState(0);
   const [isRunning, setIsRunning] = useState(false);
@@ -38,8 +27,13 @@ export function useCountdown(): UseCountdownReturn {
 
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const endTimeRef = useRef<number>(0);
+  const vibrationRef = useRef<VibrationMode>('off');
 
-  // Відновлення тривалості з AsyncStorage
+  // Sync vibration ref so interval callback always has the latest value
+  useEffect(() => {
+    vibrationRef.current = vibration;
+  }, [vibration]);
+
   useEffect(() => {
     AsyncStorage.getItem(STORAGE_KEYS.TIMER_DURATION)
       .then((val) => {
@@ -54,16 +48,13 @@ export function useCountdown(): UseCountdownReturn {
       .catch(() => {});
   }, []);
 
-  // Завантаження звуку при зміні теми або списку кастомних звуків
+  // Завантаження звуку при зміні теми або кастомних звуків
   useEffect(() => {
-    const builtIn = SOUND_THEMES.find((t) => t.key === soundTheme);
-    if (builtIn) {
-      // Вбудована тема: асет + власний патерн вібрації
-      loadSound(builtIn.assetPath, builtIn.vibrationPattern).catch(() => {});
+    if (soundTheme === 'default') {
+      loadSound(DEFAULT_SOUND_ASSET).catch(() => {});
     } else {
-      // Кастомний звук: URI + вібрація як у 'classic'
       const custom = customSounds.find((s) => s.id === soundTheme);
-      loadSound(custom?.uri ?? null, [0, 600]).catch(() => {});
+      loadSound(custom?.uri ?? null).catch(() => {});
     }
   }, [soundTheme, customSounds]);
 
@@ -71,6 +62,7 @@ export function useCountdown(): UseCountdownReturn {
   useEffect(() => {
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
+      stopLoopingAlert();
       unloadSound().catch(() => {});
     };
   }, []);
@@ -96,7 +88,7 @@ export function useCountdown(): UseCountdownReturn {
         setRemainingMs(0);
         setIsRunning(false);
         setIsFinished(true);
-        playSound();
+        startLoopingAlert(vibrationRef.current);
       } else {
         setRemainingMs(left);
       }
@@ -123,7 +115,7 @@ export function useCountdown(): UseCountdownReturn {
           setRemainingMs(0);
           setIsRunning(false);
           setIsFinished(true);
-          playSound();
+          startLoopingAlert(vibrationRef.current);
         } else {
           setRemainingMs(left);
         }
@@ -141,6 +133,7 @@ export function useCountdown(): UseCountdownReturn {
 
   const reset = useCallback(() => {
     if (intervalRef.current) clearInterval(intervalRef.current);
+    stopLoopingAlert();
     setIsRunning(false);
     setIsFinished(false);
     setRemainingMs(totalSeconds * 1000);

@@ -56,10 +56,10 @@ export default function StopwatchScreen() {
           Загальний час
         </Text>
         <View style={styles.timeRow}>
-          <Text style={[styles.timeMain, { color: colors.text, fontFamily: FONT_FAMILY.light }]}>
+          <Text style={[styles.timeMain, { color: colors.text }]}>
             {main}
           </Text>
-          <Text style={[styles.timeCents, { color: colors.textMuted, fontFamily: FONT_FAMILY.light }]}>
+          <Text style={[styles.timeCents, { color: colors.textMuted }]}>
             .{cents}
           </Text>
         </View>
@@ -147,8 +147,8 @@ const styles = StyleSheet.create({
   timeBlock: { paddingHorizontal: 24, paddingBottom: 16, alignItems: 'center', gap: 8 },
   timeLabel: { fontSize: 14, letterSpacing: 3, textTransform: 'uppercase' },
   timeRow: { flexDirection: 'row', alignItems: 'baseline' },
-  timeMain: { fontSize: 84, lineHeight: 84, letterSpacing: -3 },
-  timeCents: { fontSize: 40, marginLeft: 4 },
+  timeMain: { fontSize: 84, lineHeight: 84, letterSpacing: -3, fontVariant: ['tabular-nums'] },
+  timeCents: { fontSize: 40, marginLeft: 4, fontVariant: ['tabular-nums'] },
 
   lapPill: {
     marginTop: 6,

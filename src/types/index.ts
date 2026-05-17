@@ -5,6 +5,9 @@
 /** Визначає поточний режим теми оформлення */
 export type ThemeMode = 'dark' | 'light' | 'system';
 
+/** Режим вібрації при спрацюванні таймера */
+export type VibrationMode = 'off' | 'pulse';
+
 /**
  * Ідентифікатор активної звукової теми.
  * Вбудовані: 'classic' | 'digital'
@@ -18,15 +21,6 @@ export interface LapEntry {
   index: number;
   timeMs: number;
   splitMs: number;
-}
-
-/** Вбудована звукова тема (статичний require) */
-export interface SoundThemeOption {
-  key: string;
-  label: string;
-  description: string;
-  assetPath: number;
-  vibrationPattern: number[];
 }
 
 /**
