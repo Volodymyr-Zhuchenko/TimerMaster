@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as DocumentPicker from 'expo-document-picker';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import { useTheme } from '@/hooks/useTheme';
 import { useSettings } from '@/hooks/useSettings';
 import { DARK_THEME, LIGHT_THEME } from '@/constants/colors';

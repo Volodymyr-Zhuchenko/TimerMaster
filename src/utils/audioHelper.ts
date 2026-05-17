@@ -8,6 +8,7 @@ import type { VibrationMode } from '@/types';
 const PULSE_PATTERN = [0, 300, 150, 300, 150, 300, 150, 600];
 
 let _player: AudioPlayer | null = null;
+let _loopInterval: ReturnType<typeof setInterval> | null = null;
 
 setAudioModeAsync({
   playsInSilentModeIOS: true,
@@ -27,23 +28,19 @@ export async function loadSound(source: number | string | null): Promise<void> {
 
 export function startLoopingAlert(vibration: VibrationMode): void {
   Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-  if (vibration === 'pulse') {
-    Vibration.vibrate(PULSE_PATTERN, true);
+  if (vibration === 'pulse') Vibration.vibrate(PULSE_PATTERN, true);
+
+  function playOnce() {
+    if (_player) { _player.seekTo(0); _player.play(); }
   }
-  if (_player) {
-    _player.loop = true;
-    _player.seekTo(0);
-    _player.play();
-  }
+  playOnce();
+  _loopInterval = setInterval(playOnce, 2500);
 }
 
 export function stopLoopingAlert(): void {
+  if (_loopInterval) { clearInterval(_loopInterval); _loopInterval = null; }
   Vibration.cancel();
-  if (_player) {
-    _player.loop = false;
-    _player.pause();
-    _player.seekTo(0);
-  }
+  if (_player) { _player.pause(); _player.seekTo(0); }
 }
 
 export async function unloadSound(): Promise<void> {

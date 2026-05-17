@@ -1,20 +1,16 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import {
-  Alert,
-  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useIsFocused } from '@react-navigation/native';
 import { useCountdown } from '@/hooks/useCountdown';
 import { useTheme } from '@/hooks/useTheme';
 import ScreenHeader from '@/components/ScreenHeader';
 import TickDial from '@/components/TickDial';
 import { FabButton, SideButton } from '@/components/CustomButton';
-import { stopLoopingAlert } from '@/utils/audioHelper';
 import { FONT_FAMILY } from '@/constants/fonts';
 
 // ─── Wheel column (above / selected / below) ─────────────
@@ -103,24 +99,9 @@ export default function TimerScreen() {
     reset,
   } = useCountdown();
 
-  const isFocused = useIsFocused();
-
   const [pickerH, setPickerH] = useState(0);
   const [pickerM, setPickerM] = useState(0);
   const [pickerS, setPickerS] = useState(0);
-
-  // Popup лише якщо таймер закінчився саме поки цей екран активний
-  useEffect(() => {
-    if (isFinished && isFocused) {
-      Alert.alert(
-        'Час закінчився',
-        '',
-        [{ text: 'OK', onPress: () => { stopLoopingAlert(); reset(); } }],
-        { cancelable: false },
-      );
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isFinished]);
 
   const isIdle = !isRunning && remainingMs === totalSeconds * 1000 && !isFinished;
   const ready = pickerH + pickerM + pickerS > 0;

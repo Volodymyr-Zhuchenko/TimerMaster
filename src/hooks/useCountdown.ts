@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { STORAGE_KEYS } from '@/constants/storage';
 import { DEFAULT_SOUND_ASSET } from '@/constants/soundThemes';
@@ -28,11 +29,10 @@ export function useCountdown(): UseCountdownReturn {
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const endTimeRef = useRef<number>(0);
   const vibrationRef = useRef<VibrationMode>('off');
+  const resetRef = useRef<() => void>(() => {});
 
-  // Sync vibration ref so interval callback always has the latest value
-  useEffect(() => {
-    vibrationRef.current = vibration;
-  }, [vibration]);
+  // Sync refs so interval callbacks always have the latest values
+  useEffect(() => { vibrationRef.current = vibration; }, [vibration]);
 
   useEffect(() => {
     AsyncStorage.getItem(STORAGE_KEYS.TIMER_DURATION)
@@ -89,6 +89,11 @@ export function useCountdown(): UseCountdownReturn {
         setIsRunning(false);
         setIsFinished(true);
         startLoopingAlert(vibrationRef.current);
+        Alert.alert(
+          'Час закінчився', '',
+          [{ text: 'OK', onPress: () => { stopLoopingAlert(); resetRef.current(); } }],
+          { cancelable: false },
+        );
       } else {
         setRemainingMs(left);
       }
@@ -116,6 +121,11 @@ export function useCountdown(): UseCountdownReturn {
           setIsRunning(false);
           setIsFinished(true);
           startLoopingAlert(vibrationRef.current);
+          Alert.alert(
+            'Час закінчився', '',
+            [{ text: 'OK', onPress: () => { stopLoopingAlert(); resetRef.current(); } }],
+            { cancelable: false },
+          );
         } else {
           setRemainingMs(left);
         }
@@ -138,6 +148,8 @@ export function useCountdown(): UseCountdownReturn {
     setIsFinished(false);
     setRemainingMs(totalSeconds * 1000);
   }, [totalSeconds]);
+
+  useEffect(() => { resetRef.current = reset; }, [reset]);
 
   return { totalSeconds, remainingMs, isRunning, isFinished, setDuration, start, startWithDuration, pause, reset };
 }
