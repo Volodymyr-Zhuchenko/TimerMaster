@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
+  Modal,
   ScrollView,
   StyleSheet,
   Switch,
@@ -104,7 +105,7 @@ function ThemeCard({
     >
       <View style={[styles.themeCardPreview, { backgroundColor: c.background }]}>
         <View style={[styles.themeCardBar, { backgroundColor: c.surface2 }]} />
-        <Text style={[styles.themeCardTime, { color: c.text, fontFamily: FONT_FAMILY.light }]}>
+        <Text style={[styles.themeCardTime, { color: c.text }]}>
           02:31
         </Text>
         <View style={styles.themeCardDots}>
@@ -134,6 +135,7 @@ export default function SettingsScreen() {
   const { colors, themeMode, resolvedMode, setThemeMode } = useTheme();
   const { soundTheme, setSoundTheme, customSounds, addCustomSound, removeCustomSound, vibration, setVibration } = useSettings();
   const [importing, setImporting] = useState(false);
+  const [showAbout, setShowAbout] = useState(false);
 
   async function handlePickSound() {
     if (importing) return;
@@ -309,15 +311,56 @@ export default function SettingsScreen() {
         {/* ── Про застосунок ── */}
         <Section title="Інше">
           <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <Row label="Про додаток" sub="TimeMaster v1.0 · Залікова робота" />
+            <Row
+              label="Про додаток"
+              sub="TimeMaster v1.0 · Залікова робота"
+              onPress={() => setShowAbout(true)}
+            />
           </View>
         </Section>
 
-        <Text style={[styles.footer, { color: colors.textDim, fontFamily: FONT_FAMILY.regular }]}>
-          зроблено зі швидкістю 60 fps
-        </Text>
-
       </ScrollView>
+      {/* ── About modal ── */}
+      <Modal visible={showAbout} animationType="slide" presentationStyle="pageSheet">
+        <SafeAreaView edges={['top', 'bottom']} style={[styles.aboutContainer, { backgroundColor: colors.background }]}>
+          <View style={styles.aboutHeader}>
+            <TouchableOpacity onPress={() => setShowAbout(false)} activeOpacity={0.7}>
+              <Text style={[styles.aboutBack, { color: colors.start, fontFamily: FONT_FAMILY.medium }]}>← Назад</Text>
+            </TouchableOpacity>
+            <Text style={[styles.aboutTitle, { color: colors.text }]}>Про додаток</Text>
+            <View style={styles.aboutBackPlaceholder} />
+          </View>
+
+          <ScrollView contentContainerStyle={styles.aboutScroll}>
+            <View style={[styles.aboutCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <Text style={[styles.aboutAppName, { color: colors.text, fontFamily: FONT_FAMILY.medium }]}>
+                TimeMaster
+              </Text>
+              <Text style={[styles.aboutVersion, { color: colors.textMuted, fontFamily: FONT_FAMILY.regular }]}>
+                Версія 1.0
+              </Text>
+            </View>
+
+            <View style={[styles.aboutCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <Text style={[styles.aboutSectionTitle, { color: colors.textMuted, fontFamily: FONT_FAMILY.regular }]}>
+                ПРО РОБОТУ
+              </Text>
+              <Text style={[styles.aboutBody, { color: colors.text }]}>
+                TimeMaster — залікова робота з дисципліни «Розробка інтерфейсів користувача», виконана в межах навчальної програми університету.
+              </Text>
+            </View>
+
+            <View style={[styles.aboutCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <Text style={[styles.aboutSectionTitle, { color: colors.textMuted, fontFamily: FONT_FAMILY.regular }]}>
+                ПРО ПРОГРАМУ
+              </Text>
+              <Text style={[styles.aboutBody, { color: colors.text }]}>
+                Мобільний застосунок для керування часом. Містить секундомір із фіксацією кіл, зворотний таймер із налаштуванням тривалості та звуковим сповіщенням, а також гнучкі налаштування теми оформлення, звуку та вібрації.
+              </Text>
+            </View>
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -344,7 +387,7 @@ const styles = StyleSheet.create({
   themeCard: { flex: 1, borderRadius: 16, overflow: 'hidden' },
   themeCardPreview: { padding: 14, paddingBottom: 10, alignItems: 'center', gap: 8 },
   themeCardBar: { height: 6, width: '65%', borderRadius: 999 },
-  themeCardTime: { fontSize: 20, letterSpacing: -0.5 },
+  themeCardTime: { fontSize: 20, letterSpacing: -0.5, fontVariant: ['tabular-nums'] },
   themeCardDots: { flexDirection: 'row', gap: 6 },
   themeDot: { width: 13, height: 13, borderRadius: 7 },
   themeCardFooter: {
@@ -413,11 +456,27 @@ const styles = StyleSheet.create({
   addBtn: { padding: 14, alignItems: 'center' },
   addBtnLabel: { fontSize: 15 },
 
-  footer: {
-    textAlign: 'center',
-    padding: 24,
-    fontSize: 10,
-    letterSpacing: 2,
-    textTransform: 'uppercase',
+  // About modal
+  aboutContainer: { flex: 1 },
+  aboutHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 14,
   },
+  aboutBack: { fontSize: 15 },
+  aboutBackPlaceholder: { width: 60 },
+  aboutTitle: { fontSize: 17, fontWeight: '600' },
+  aboutScroll: { padding: 20, gap: 12 },
+  aboutCard: {
+    borderRadius: 20,
+    borderWidth: 1,
+    padding: 20,
+    gap: 8,
+  },
+  aboutAppName: { fontSize: 28, letterSpacing: -0.5 },
+  aboutVersion: { fontSize: 13 },
+  aboutSectionTitle: { fontSize: 10, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 4 },
+  aboutBody: { fontSize: 15, lineHeight: 22 },
 });

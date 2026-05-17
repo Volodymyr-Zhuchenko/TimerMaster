@@ -4,7 +4,6 @@ import Svg, { Path } from 'react-native-svg';
 import { useTheme } from '@/hooks/useTheme';
 import type { LapEntry } from '@/types';
 import { formatMsLap } from '@/utils/timeFormat';
-import { FONT_FAMILY } from '@/constants/fonts';
 
 function ArrowDownIcon({ color }: { color: string }) {
   return (
@@ -36,17 +35,17 @@ export default function LapItem({ lap, isFastest, isSlowest }: Props) {
   return (
     <View style={[styles.row, { borderBottomColor: colors.borderSoft }]}>
       {/* # */}
-      <Text style={[styles.num, { color: colors.textMuted, fontFamily: FONT_FAMILY.regular }]}>
+      <Text style={[styles.num, { color: colors.textMuted }]}>
         {String(lap.index).padStart(2, '0')}
       </Text>
 
       {/* Коло */}
-      <Text style={[styles.split, { color: timeColor, fontFamily: FONT_FAMILY.regular }]}>
+      <Text style={[styles.split, { color: timeColor }]}>
         {formatMsLap(lap.splitMs)}
       </Text>
 
       {/* Загальне */}
-      <Text style={[styles.total, { color: colors.textMuted, fontFamily: FONT_FAMILY.regular }]}>
+      <Text style={[styles.total, { color: colors.textMuted }]}>
         {formatMsLap(lap.timeMs)}
       </Text>
 
@@ -80,14 +79,17 @@ const styles = StyleSheet.create({
     width: 36,
     fontSize: 14,
     letterSpacing: 1,
+    fontVariant: ['tabular-nums'],
   },
   split: {
     flex: 1,
     fontSize: 17,
+    fontVariant: ['tabular-nums'],
   },
   total: {
     flex: 1,
     fontSize: 15,
+    fontVariant: ['tabular-nums'],
   },
   icon: {
     width: 36,

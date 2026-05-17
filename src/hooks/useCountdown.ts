@@ -122,7 +122,7 @@ export function useCountdown(): UseCountdownReturn {
           setIsFinished(true);
           startLoopingAlert(vibrationRef.current);
           Alert.alert(
-            'Час закінчився', '',
+            'Таймер', 'Час стік',
             [{ text: 'OK', onPress: () => { stopLoopingAlert(); resetRef.current(); } }],
             { cancelable: false },
           );
